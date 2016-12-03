@@ -18,13 +18,13 @@ void printDate(){
 void print_status(long tgid) {
 	char path[40], line[100], *p;
 	FILE* statusf;
-	
+
 	snprintf(path,40,"/proc/%ld/status",tgid);
 
 	statusf =fopen(path,"r");
 	if(!statusf)
 	    return;
-	
+
 	while(fgets(line, 100, statusf)) {
 		if(strncmp(line, "Uid:", 4))
 		    continue;
@@ -40,7 +40,7 @@ void print_status(long tgid) {
 
 		/*int count = 0;
 		while(!isspace(*p)){
-		printf("%c\n",p);		 
+		printf("%c\n",p);
 		++count;
 		}
 
@@ -59,80 +59,93 @@ bool foundFile(char* dir_path, char* file_name){
  int i=0;
    DIR *dir;
    struct dirent *direntry; //could be a file, or a directory
- 
+
    dir = opendir(dir_path);
    if(!dir) {
       printf("Error: directory did not open!\n");
       return false;
    }
- 
+
    while((direntry=readdir(dir))!=NULL) {
-      if(++i < 20) 
+      if(++i < 20)
          printf("%s\n",direntry->d_name);
       if((strcmp(direntry->d_name, file_name))==0) {
          printf("\nThe %s file has been found\n",direntry->d_name);
          i=-99;  //just a flag value to show the file was found
          break;
       }
- 
+
    }
    if(i!=-99){
       printf("\nThe test.txt file was not found\n");
       closedir(dir);
       return false;
     }
- 
+
    closedir(dir);
- 
+
    printf("\n");
    return true;
 }
 
 void parse_command_line( int argc, char *argv[] )
 {
-printf("%d \n",argc);
-  const char *usage = "Usage: phunt -l <log file> -c <config>";
-  if (argc < 1 ) {
-    printf( "%s\n\n", usage );
-    exit(1);
-  }
+	printf("%d \n",argc);
 
-//Check to see that there are less than 5 args, anything over 5 means they put too many args
-if(argc < 5){
-//Check when they specify only the log or config file
-if(argc == 1){
-  printf("We want to use defaults for log and config!\n");
-}
-else if(argc == 3){
-  if( strcmp(argv[1],"-l") == 0 ) {
-    printf("We want the logfile %s \n",argv[2]);
-  } else if ( strcmp(argv[1],"-c") == 0) {
-    printf("We want the configfile %s \n",argv[2]);
-  }else{
-    printf( "%s\n\n", usage );
-  }
-} else if( argc == 5){
-printf("use 5\n");
- if( strcmp(argv[1],"-l") == 0 && strcmp(argv[3],"-c") == 0 ) {
-    printf("We want the logfile %s \n",argv[2]);
-    printf("We want the configfile %s \n",argv[4]);
-  }else{
-    printf( "%s\n\n", usage );
-  }
-}else{
-    printf( "%s\n\n", usage );
-}
+		/* What to display on a usage error */
+	  const char *usage = "Usage: phunt -l <log file> -c <config>";
+
+	//Check to see that there are at most 5 args, anything over 5 means they put too many args, also check there is at least 1 arg
+	if(argc <= 5 && argc >= 1){
+		if(argc == 1){ //What to do when we want to use default log and config
+			printf("We want to use defaults for log and config!\n");
+			//get default descriptor for log and config here
 
 
+		}else if(argc == 3){//What we want to do if they specify only the log or config file
+			if( strcmp(argv[1],"-l") == 0 ) {
+				printf("We want the logfile %s \n",argv[2]);
+				//get the specified logfile descriptor we want here
 
-}else{
-    printf( "%s\n\n", usage );
-    exit(1);
-}
-  
+				//get the default configfile descriptor here
+
+		  } else if ( strcmp(argv[1],"-c") == 0) {
+		    printf("We want the configfile %s \n",argv[2]);
+				//get the default logfile descriptor here
+
+				//get the specified configfile descriptor we want here
 
 
+		  }else{
+				//if our -l or -c was not our second argument
+		    printf( "%s\n\n", usage );
+				exit(1);
+		  }
+		}else if( argc == 5){ //Check when we specify log and config files
+			 printf("use 5\n");
+			 if( strcmp(argv[1],"-l") == 0 && strcmp(argv[3],"-c") == 0 ) {
+			    printf("We want the logfile %s \n",argv[2]);
+			    printf("We want the configfile %s \n",argv[4]);
+					//get the specified logfile descriptor here
 
+					//get the specified configfile descriptor we want here
+
+			  }else{
+					//if our -l or -c argurments were wrong
+			    printf( "%s\n\n", usage );
+					exit(1);
+			  }
+		}else{
+			//Any other amount of args other than 1,3, or 5 is bad usage
+		    printf( "%s\n\n", usage );
+				exit(1);
+		}
+
+	}else{
+		//any amount of args over 5 or less than 1 is bad usage
+	    printf( "%s\n\n", usage );
+	    exit(1);
+	}
 }
 
 
@@ -142,7 +155,7 @@ int main( int argc, char *argv[]){
 
 	//printDate();
 
-	//if(foundFile(argv[1],argv[2]))	
+	//if(foundFile(argv[1],argv[2]))
 	//printf("This is Phunter!\n");
 /*
 	struct passwd *pwd;
@@ -152,7 +165,7 @@ int main( int argc, char *argv[]){
 	DIR* proc = opendir("/proc");
 	struct dirent* ent;
 	long tgid;
-	
+
 	if(proc == NULL){
 		perror("opendir(/proc)");
 		return 1;
