@@ -255,12 +255,33 @@ int main( int argc, char *argv[]){
 	parse_command_line(argc, argv, &logfp, &conf);
 //while(1);
 // Parse the config file and construct our rules here
-	char line[100];
+	char line[150];
 	while(fgets(line,sizeof(line), conf)){
-	if(is_empty(line) || line[0] == '#')
-	printf("Ignore this stuff\n");
-	else
-	printf("Line: %s",line);
+		if(is_empty(line) || line[0] == '#'){
+		    //printf("Ignore this stuff\n");
+		} else{
+		    printf("Line: %s",line);
+		    /* Lets get our ACTION TYPE PARAM here! */
+		    //First we need to split the line by white space to get our three arguments
+		    char * token = strtok(line," \t\n");
+		    //char * action, type, param;
+		    char * action = strdup(token);
+			printf("ACTITON: %s\n",action);
+			token = strtok(NULL," \t\n");
+		    char * type = strdup(token);
+			printf("TYPE: %s\n",type);
+			token = strtok(NULL," \t\n");
+		    char * param = strdup(token);
+			printf("PARAM: %s\n",param);
+			
+/*int i = 0;
+    printf("cnt  token\n");
+    printf("==========\n");
+    while (token) {
+        printf("%2d %s\n", i++, token);
+        token = strtok(NULL, " \t\n");
+    }*/
+		}	
 	}
 
 
