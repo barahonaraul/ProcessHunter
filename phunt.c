@@ -1,18 +1,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <signal.h>
 #include <time.h>
 #include <dirent.h>
 #include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
 #include <pwd.h>
+#include <unistd.h>
+#include <sys/types.h>
 
+FILE *logfp = NULL;
+FILE *conf = NULL;
+char d_conf_path[] = "/etc/phunt.conf";
+char d_log_path[] = "/var/log/phunt.log";
+char start_up[150];
+pid_t pid;
 
-void printDate(){
+void printDateLog(){
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
-	printf("now: %d-%d-%d %d:%d:%d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	fprintf(logfp,"now: %d-%d-%d %d:%d:%d ", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
 void print_status(long tgid) {
@@ -88,10 +97,32 @@ bool foundFile(char* dir_path, char* file_name){
    return true;
 }
 
-void parse_command_line( int argc, char *argv[] )
-{
-	printf("%d \n",argc);
+void getFileToRead(FILE **fp, char *p){
 
+*fp = fopen(p,"r");
+
+if(fp == NULL){
+printf("Unable to open config file! Aborting!\n");
+exit(1);
+}
+
+}
+
+void getFileToAppend(FILE **fp, char *p){
+*fp = fopen(p,"a+");
+if(fp == NULL){
+printf("Unable to open log file! Aborting!\n");
+exit(1);
+}else{
+fprintf(logfp,"%s",start_up);
+printDateLog();
+fprintf(logfp,"opened the log file \n");
+}
+
+}
+
+void parse_command_line( int argc, char *argv[], FILE **log, FILE **conf )
+{
 		/* What to display on a usage error */
 	  const char *usage = "Usage: phunt -l <log file> -c <config>";
 
@@ -100,6 +131,8 @@ void parse_command_line( int argc, char *argv[] )
 		if(argc == 1){ //What to do when we want to use default log and config
 			printf("We want to use defaults for log and config!\n");
 			//get default descriptor for log and config here
+			getFileToRead(conf,d_conf_path);
+			getFileToAppend(log,d_log_path);
 
 
 		}else if(argc == 3){//What we want to do if they specify only the log or config file
@@ -122,7 +155,6 @@ void parse_command_line( int argc, char *argv[] )
 				exit(1);
 		  }
 		}else if( argc == 5){ //Check when we specify log and config files
-			 printf("use 5\n");
 			 if( strcmp(argv[1],"-l") == 0 && strcmp(argv[3],"-c") == 0 ) {
 			    printf("We want the logfile %s \n",argv[2]);
 			    printf("We want the configfile %s \n",argv[4]);
@@ -148,11 +180,66 @@ void parse_command_line( int argc, char *argv[] )
 	}
 }
 
+int is_empty(const char *s) {
+  while (*s != '\0') {
+    if (!isspace(*s))
+      return 0;
+    s++;
+  }
+  return 1;
+}
+
+/*
+ * signal handler to catch CTRL-C and shut down things nicely
+ */
+void stop_and_exit( int signo )
+{
+  /*if( logfp != NULL ) {
+    //fclose( logfp );
+  }
+  if( conf != NULL ) {
+    fclose(conf);
+  }
+  exit( 0 );*/
+}
 
 int main( int argc, char *argv[]){
+	
+/* set up signal handler to deal with CTRL-C */
+  //signal( SIGINT, stop_and_exit );
 
-	parse_command_line(argc, argv);
+	if(pid = getpid() < 0){
+		perror("Unable to get pid!");
+		exit(1);
+	}
 
+	time_t t = time(NULL);
+	struct tm tm = *localtime(&t);
+	snprintf(start_up,100,"%d-%d-%d %d:%d:%d ubuntu phunt: phunt startup (PID=%d)\n",tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,pid);
+
+	printf("The process id is %d \n",pid);
+
+	parse_command_line(argc, argv, &logfp, &conf);
+	
+	char line[100];
+	while(fgets(line,sizeof(line), conf)){
+	if(is_empty(line) || line[0] == '#')
+	printf("Ignore this stuff\n");
+	else
+	printf("Line: %s",line);
+	}
+
+	if(conf != NULL){
+	printf("Closing conf file!\n");	
+	fclose(conf);
+	}
+
+	if(logfp != NULL){
+	printf("Closing log!\n");
+	fclose(logfp);
+	}
+	//while(1);
+	return 0;
 	//printDate();
 
 	//if(foundFile(argv[1],argv[2]))
@@ -185,7 +272,4 @@ int main( int argc, char *argv[]){
 */
 
 
-
-
-	return 0;
 }
