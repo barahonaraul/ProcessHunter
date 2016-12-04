@@ -14,14 +14,14 @@
 FILE *logfp = NULL;
 FILE *conf = NULL;
 char d_conf_path[] = "/etc/phunt.conf";
-char d_log_path[] = "/var/log/phunt.log";
+char d_log_path[] = "/var/log/phunt.log"; 
 char start_up[150];
 pid_t pid;
 
 void printDateLog(){
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
-	fprintf(logfp,"now: %d-%d-%d %d:%d:%d ", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	fprintf(logfp,"%d-%d-%d %d:%d:%d ", tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
 void print_status(long tgid) {
@@ -103,7 +103,11 @@ void getFileToRead(FILE **fp, char *p){
 
 if(fp == NULL){
 printf("Unable to open config file! Aborting!\n");
+fprintf(logfp,"ubuntu phunt: unable to open the config file, abort \n");
 exit(1);
+}else{
+printDateLog();
+fprintf(logfp,"ubuntu phunt: opened the config file %s\n",p);
 }
 
 }
@@ -116,7 +120,7 @@ exit(1);
 }else{
 fprintf(logfp,"%s",start_up);
 printDateLog();
-fprintf(logfp,"opened the log file \n");
+fprintf(logfp,"ubuntu phunt: opened the log file %s\n",p);
 }
 
 }
@@ -131,8 +135,8 @@ void parse_command_line( int argc, char *argv[], FILE **log, FILE **conf )
 		if(argc == 1){ //What to do when we want to use default log and config
 			printf("We want to use defaults for log and config!\n");
 			//get default descriptor for log and config here
-			getFileToRead(conf,d_conf_path);
 			getFileToAppend(log,d_log_path);
+			getFileToRead(conf,d_conf_path);
 
 
 		}else if(argc == 3){//What we want to do if they specify only the log or config file
