@@ -9,19 +9,29 @@
 #include <ctype.h>
 #include <pwd.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
 FILE *logfp = NULL;
 FILE *conf = NULL;
 char d_conf_path[] = "/etc/phunt.conf";
 char d_log_path[] = "/var/log/phunt.log";
+char d_conf_dir[] = "/etc/";
+char d_log_dir[] = "/var/log/";
 char start_up[150];
 int pid;
 
+//Function used to print the timestamp to our log file!
 void printDateLog(){
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
 	fprintf(logfp,"%d-%d-%d %d:%d:%d ", tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+}
+
+int doesFileExist(const char * filename){
+struct stat st;
+int result = stat(filename,&st);
+return result == 0;
 }
 
 void print_status(long tgid) {
@@ -65,31 +75,62 @@ void print_status(long tgid) {
 }
 
 void getFileToRead(FILE **fp, char *p){
+//First check to see if the file exists, if it doesn't abort
+if(doesFileExist(p)){
+	*fp = fopen(p,"r");//open file for reading
 
-	*fp = fopen(p,"r");
-
-	if(fp == NULL){
-		printf("Unable to open config file! Aborting!\n");
+	if(fp == NULL){//if there was an issue with the pointer abort
+		printf("Unable to open config file! Check permissions! Aborting!\n");
 		fprintf(logfp,"ubuntu phunt: unable to open the config file, abort \n");
 		exit(1);
-	}else{
+	}else{//if not, print to log that we opened the config file
 		printDateLog();
 		fprintf(logfp,"ubuntu phunt: opened the config file %s\n",p);
 	}
+}else{//what to do if file does not exist
+	printf("Unable to open config file! File does not exist! Aborting!\n");
+	fprintf(logfp,"ubuntu phunt: unable to open the config file, abort \n");
+	exit(1);
+}
 
 }
 
 void getFileToAppend(FILE **fp, char *p){
-	*fp = fopen(p,"a+");
-	if(fp == NULL){
-		printf("Unable to open log file! Aborting!\n");
+
+if(doesFileExist(p)){//check existance
+	*fp = fopen(p,"a+");//open file for appending (and reading but we won't be)
+
+	if(fp == NULL){//if there is an issue with the pointer abort
+		printf("Unable to open log file! Check permissions! Aborting!\n");
 		exit(1);
-	}else{
+	}else{// if not print startup message to log and print message that log file was opened
 		fprintf(logfp,"%s",start_up);
 		printDateLog();
 		fprintf(logfp,"ubuntu phunt: opened the log file %s\n",p);
 	}
+}else{//what to do if file doesn't exist
+	printf("Unable to open log file! File does not exist! Aborting!\n");
+	exit(1);
+}
 
+}
+
+char* concat(const char *s1, const char *s2)
+{
+    const size_t len1 = strlen(s1);
+    const size_t len2 = strlen(s2);
+    char *result = malloc(len1+len2+1);//+1 for terminator
+    //check for errors in malloc here
+		if(result){
+    // value isn't null
+		memcpy(result, s1, len1);
+    memcpy(result+len1, s2, len2+1);//+1 to copy the null-terminator
+		}
+		else{
+    // value is null
+		printf("Error malloc failed for %s and %s \n",s1,s2 );
+		}
+    return result;
 }
 
 void parse_command_line( int argc, char *argv[], FILE **log, FILE **conf )
@@ -108,17 +149,25 @@ void parse_command_line( int argc, char *argv[], FILE **log, FILE **conf )
 
 		}else if(argc == 3){//What we want to do if they specify only the log or config file
 			if( strcmp(argv[1],"-l") == 0 ) {
-				printf("We want the logfile %s \n",argv[2]);
+				//printf("We want the logfile %s \n",argv[2]);
 				//get the specified logfile descriptor we want here
-
+				char * spec_path = concat(d_log_dir,argv[2]);
+				getFileToAppend(log,spec_path);
+				free(spec_path);				
+				
 				//get the default configfile descriptor here
+				getFileToRead(conf,d_conf_path);
+
 
 		  } else if ( strcmp(argv[1],"-c") == 0) {
-		    printf("We want the configfile %s \n",argv[2]);
+		    		//printf("We want the configfile %s \n",argv[2]);
 				//get the default logfile descriptor here
+				getFileToAppend(log,d_log_path);
 
 				//get the specified configfile descriptor we want here
-
+				char * spec_path = concat(d_conf_dir,argv[2]);
+				getFileToRead(conf,spec_path);
+				free(spec_path);
 
 		  }else{
 				//if our -l or -c was not our second argument
@@ -130,8 +179,14 @@ void parse_command_line( int argc, char *argv[], FILE **log, FILE **conf )
 			    printf("We want the logfile %s \n",argv[2]);
 			    printf("We want the configfile %s \n",argv[4]);
 					//get the specified logfile descriptor here
+					char * spec_path = concat(d_log_dir,argv[2]);
+					getFileToAppend(log,spec_path);
+					free(spec_path);
 
 					//get the specified configfile descriptor we want here
+					spec_path = concat(d_conf_dir,argv[4]);
+					getFileToRead(conf,spec_path);
+					free(spec_path);
 
 			  }else{
 					//if our -l or -c argurments were wrong
@@ -160,23 +215,7 @@ int is_empty(const char *s) {
   return 1;
 }
 
-char* concat(const char *s1, const char *s2)
-{
-    const size_t len1 = strlen(s1);
-    const size_t len2 = strlen(s2);
-    char *result = malloc(len1+len2+1);//+1 for terminator
-    //check for errors in malloc here
-		if(result){
-    // value isn't null
-		memcpy(result, s1, len1);
-    memcpy(result+len1, s2, len2+1);//+1 to copy the null-terminator
-		}
-		else{
-    // value is null
-		printf("Error malloc failed for %s and %s \n",s1,s2 );
-		}
-    return result;
-}
+
 /*
  * signal handler to catch CTRL-C and shut down things nicely
  */
@@ -199,19 +238,20 @@ int main( int argc, char *argv[]){
   signal( SIGINT, stop_and_exit );
 
 // Get the pid of our program, print error if we can't get it and exit
-	if(pid = getpid() < 0){
+	pid = getpid();
+	if(pid < 0){
 		perror("Unable to get pid!");
 		exit(1);
 	}
 
 // Build a string that will have the log message for when we start up the program
 	time_t t = time(NULL);
-	struct tm tm = *localtime(&t);
+	struct tm tm = *localtime(&t);//Get values for our timestamp then build message
 	snprintf(start_up,100,"%d-%d-%d %d:%d:%d ubuntu phunt: phunt startup (PID=%d)\n",tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,pid);
 
 // Parse the command line and set up the pointers to the log and config files
 	parse_command_line(argc, argv, &logfp, &conf);
-
+//while(1);
 // Parse the config file and construct our rules here
 	char line[100];
 	while(fgets(line,sizeof(line), conf)){
