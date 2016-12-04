@@ -81,6 +81,7 @@ if(doesFileExist(p)){
 
 	if(fp == NULL){//if there was an issue with the pointer abort
 		printf("Unable to open config file! Check permissions! Aborting!\n");
+		printDateLog();
 		fprintf(logfp,"ubuntu phunt: unable to open the config file, abort \n");
 		exit(1);
 	}else{//if not, print to log that we opened the config file
@@ -89,6 +90,7 @@ if(doesFileExist(p)){
 	}
 }else{//what to do if file does not exist
 	printf("Unable to open config file! File does not exist! Aborting!\n");
+	printDateLog();
 	fprintf(logfp,"ubuntu phunt: unable to open the config file, abort \n");
 	exit(1);
 }
