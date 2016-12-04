@@ -14,10 +14,9 @@
 FILE *logfp = NULL;
 FILE *conf = NULL;
 char d_conf_path[] = "/etc/phunt.conf";
-char d_log_path[] = "/var/log/phunt.log"; 
+char d_log_path[] = "/var/log/phunt.log";
 char start_up[150];
-pid_t pid;
-int handler = 1;
+int pid;
 
 void printDateLog(){
 	time_t t = time(NULL);
@@ -65,64 +64,31 @@ void print_status(long tgid) {
 
 }
 
-bool foundFile(char* dir_path, char* file_name){
- int i=0;
-   DIR *dir;
-   struct dirent *direntry; //could be a file, or a directory
-
-   dir = opendir(dir_path);
-   if(!dir) {
-      printf("Error: directory did not open!\n");
-      return false;
-   }
-
-   while((direntry=readdir(dir))!=NULL) {
-      if(++i < 20)
-         printf("%s\n",direntry->d_name);
-      if((strcmp(direntry->d_name, file_name))==0) {
-         printf("\nThe %s file has been found\n",direntry->d_name);
-         i=-99;  //just a flag value to show the file was found
-         break;
-      }
-
-   }
-   if(i!=-99){
-      printf("\nThe test.txt file was not found\n");
-      closedir(dir);
-      return false;
-    }
-
-   closedir(dir);
-
-   printf("\n");
-   return true;
-}
-
 void getFileToRead(FILE **fp, char *p){
 
-*fp = fopen(p,"r");
+	*fp = fopen(p,"r");
 
-if(fp == NULL){
-printf("Unable to open config file! Aborting!\n");
-fprintf(logfp,"ubuntu phunt: unable to open the config file, abort \n");
-exit(1);
-}else{
-printDateLog();
-fprintf(logfp,"ubuntu phunt: opened the config file %s\n",p);
-}
+	if(fp == NULL){
+		printf("Unable to open config file! Aborting!\n");
+		fprintf(logfp,"ubuntu phunt: unable to open the config file, abort \n");
+		exit(1);
+	}else{
+		printDateLog();
+		fprintf(logfp,"ubuntu phunt: opened the config file %s\n",p);
+	}
 
 }
 
 void getFileToAppend(FILE **fp, char *p){
-*fp = fopen(p,"a+");
-if(fp == NULL){
-printf("Unable to open log file! Aborting!\n");
-exit(1);
-}else{
-fprintf(logfp,"%s",start_up);
-printDateLog();
-fprintf(logfp,"ubuntu phunt: opened the log file %s\n",p);
-}
+	*fp = fopen(p,"a+");
+	if(fp == NULL){
+		printf("Unable to open log file! Aborting!\n");
+		exit(1);
+	}else{
+		fprintf(logfp,"%s",start_up);
+		printDateLog();
+		fprintf(logfp,"ubuntu phunt: opened the log file %s\n",p);
+	}
 
 }
 
@@ -194,6 +160,23 @@ int is_empty(const char *s) {
   return 1;
 }
 
+char* concat(const char *s1, const char *s2)
+{
+    const size_t len1 = strlen(s1);
+    const size_t len2 = strlen(s2);
+    char *result = malloc(len1+len2+1);//+1 for terminator
+    //check for errors in malloc here
+		if(result){
+    // value isn't null
+		memcpy(result, s1, len1);
+    memcpy(result+len1, s2, len2+1);//+1 to copy the null-terminator
+		}
+		else{
+    // value is null
+		printf("Error malloc failed for %s and %s \n",s1,s2 );
+		}
+    return result;
+}
 /*
  * signal handler to catch CTRL-C and shut down things nicely
  */
@@ -207,29 +190,29 @@ void stop_and_exit( int signo )
   }
 
  exit(0);
-  
+
 }
 
 int main( int argc, char *argv[]){
-	
+
 /* set up signal handler to deal with CTRL-C */
   signal( SIGINT, stop_and_exit );
-	//int p = getpid();
 
-	//printf("The process id is %d\n",p);
+// Get the pid of our program, print error if we can't get it and exit
 	if(pid = getpid() < 0){
 		perror("Unable to get pid!");
 		exit(1);
 	}
 
+// Build a string that will have the log message for when we start up the program
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
 	snprintf(start_up,100,"%d-%d-%d %d:%d:%d ubuntu phunt: phunt startup (PID=%d)\n",tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,pid);
 
-	printf("The process id is %d \n",pid);
-
+// Parse the command line and set up the pointers to the log and config files
 	parse_command_line(argc, argv, &logfp, &conf);
-	
+
+// Parse the config file and construct our rules here
 	char line[100];
 	while(fgets(line,sizeof(line), conf)){
 	if(is_empty(line) || line[0] == '#')
@@ -238,10 +221,13 @@ int main( int argc, char *argv[]){
 	printf("Line: %s",line);
 	}
 
+
+//Sample infinite loop
 	while(1);
 
+//If we get here lets close our files
 	if(conf != NULL){
-	printf("Closing conf file!\n");	
+	printf("Closing conf file!\n");
 	fclose(conf);
 	}
 
@@ -249,17 +235,16 @@ int main( int argc, char *argv[]){
 	printf("Closing log!\n");
 	fclose(logfp);
 	}
-	
-	return 0;
-	//printDate();
 
-	//if(foundFile(argv[1],argv[2]))
-	//printf("This is Phunter!\n");
+	return 0;
 /*
+//How to get the username as a string (will use this later)
 	struct passwd *pwd;
 	pwd = getpwuid(atoi("1000"));
 	printf("username: %s\n",pwd->pw_name);
 
+//Reading the proc/ directory
+//set up the DIR
 	DIR* proc = opendir("/proc");
 	struct dirent* ent;
 	long tgid;
@@ -269,13 +254,14 @@ int main( int argc, char *argv[]){
 		return 1;
 	}
 
-
-
 	while( ent = readdir(proc)) {
+	//look if the folder being looked at is a digit (meaning its a process folder)
 		if(!isdigit(*ent->d_name))
-			continue;
+			continue; //If it is not we continue to the next file in the proc dir
 
+		//If we didn't continue, then convert the name of the folder into a long which holds the pid
 		tgid = strtol(ent->d_name, NULL, 10);
+		//Pass it in our function to read the contents for that process
 		print_status(tgid);
 	}
 
