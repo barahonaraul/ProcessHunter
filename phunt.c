@@ -17,6 +17,7 @@ char d_conf_path[] = "/etc/phunt.conf";
 char d_log_path[] = "/var/log/phunt.log"; 
 char start_up[150];
 pid_t pid;
+int handler = 1;
 
 void printDateLog(){
 	time_t t = time(NULL);
@@ -198,20 +199,24 @@ int is_empty(const char *s) {
  */
 void stop_and_exit( int signo )
 {
-  /*if( logfp != NULL ) {
-    //fclose( logfp );
+  if( logfp != NULL ) {
+    fclose( logfp );
   }
   if( conf != NULL ) {
     fclose(conf);
   }
-  exit( 0 );*/
+
+ exit(0);
+  
 }
 
 int main( int argc, char *argv[]){
 	
 /* set up signal handler to deal with CTRL-C */
-  //signal( SIGINT, stop_and_exit );
+  signal( SIGINT, stop_and_exit );
+	//int p = getpid();
 
+	//printf("The process id is %d\n",p);
 	if(pid = getpid() < 0){
 		perror("Unable to get pid!");
 		exit(1);
@@ -233,6 +238,8 @@ int main( int argc, char *argv[]){
 	printf("Line: %s",line);
 	}
 
+	while(1);
+
 	if(conf != NULL){
 	printf("Closing conf file!\n");	
 	fclose(conf);
@@ -242,7 +249,7 @@ int main( int argc, char *argv[]){
 	printf("Closing log!\n");
 	fclose(logfp);
 	}
-	//while(1);
+	
 	return 0;
 	//printDate();
 
