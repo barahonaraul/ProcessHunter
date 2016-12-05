@@ -20,6 +20,79 @@ char d_conf_dir[] = "/etc/";
 char d_log_dir[] = "/var/log/";
 char start_up[150];
 int pid;
+int rule_start = 1;
+
+typedef struct RuleNode RuleNode;
+
+struct RuleNode{
+
+    char * action;
+    char * type;
+    char * param;
+    struct RuleNode *next; 
+
+};
+
+RuleNode *head = NULL;//Keep track of our head
+RuleNode *curr = NULL;//Keep track of our last non null element
+
+RuleNode* listAdd(char* action, char* type, char* param, bool addToEnd) {
+//    printf("allocate memory for node\n");
+    RuleNode *ptr = malloc(sizeof(RuleNode));
+
+// Get copy the given action, type, and param for the rule into our pointer, set next to null
+    //printf("Copy the current action: %s\n",action);
+    ptr->action = strdup(action);
+    //printf("Copy the current type: %s\n",type);
+    ptr->type = strdup(type);
+    //printf("Copy the current param: %s\n",param);
+    ptr->param = strdup(param);
+    ptr->next = NULL;
+
+    if (addToEnd)//depending on given input, add to end or head of list
+    {
+	//printf("curr next is now pointer!\n");
+        curr->next = ptr;
+	//printf("curr is now ptr!\n");
+        curr = ptr;
+    }
+    else//add as head if false
+    {
+	//printf("head time!\n");
+	//This should only happen once. Here we add the first element, and set current = head
+        ptr->next = head;
+	//printf("head is now ptr!\n");
+        head = ptr;
+	//printf("curr is now head!\n");
+	curr = head;
+    }
+
+    return ptr;
+}
+
+/* Print out all our rules from head to tail */
+void printList() {
+  RuleNode* ptr = head;
+  while(ptr) {
+    printf("%s %s %s\n", ptr->action,ptr->type,ptr->param);
+    ptr = ptr->next;
+  }
+}
+
+/* Free our rules list! */
+void freeList() {
+  RuleNode* ptr = head;
+  RuleNode* tmp = 0;
+  while(ptr) {
+    tmp = ptr->next;
+    free(ptr->action);
+    free(ptr->type);
+    free(ptr->param);
+    free(ptr);
+    ptr = tmp;
+  }
+}
+
 
 //Function used to print the timestamp to our log file!
 void printDateLog(){
@@ -178,8 +251,8 @@ void parse_command_line( int argc, char *argv[], FILE **log, FILE **conf )
 		  }
 		}else if( argc == 5){ //Check when we specify log and config files
 			 if( strcmp(argv[1],"-l") == 0 && strcmp(argv[3],"-c") == 0 ) {
-			    printf("We want the logfile %s \n",argv[2]);
-			    printf("We want the configfile %s \n",argv[4]);
+			    //printf("We want the logfile %s \n",argv[2]);
+			    //printf("We want the configfile %s \n",argv[4]);
 					//get the specified logfile descriptor here
 					char * spec_path = concat(d_log_dir,argv[2]);
 					getFileToAppend(log,spec_path);
@@ -230,6 +303,8 @@ void stop_and_exit( int signo )
     fclose(conf);
   }
 
+  freeList();
+
  exit(0);
 
 }
@@ -253,37 +328,50 @@ int main( int argc, char *argv[]){
 
 // Parse the command line and set up the pointers to the log and config files
 	parse_command_line(argc, argv, &logfp, &conf);
-//while(1);
 // Parse the config file and construct our rules here
-	char line[150];
+	char line[150];//local variable which will hold our line as we read
 	while(fgets(line,sizeof(line), conf)){
-		if(is_empty(line) || line[0] == '#'){
+		if(is_empty(line) || line[0] == '#'){//Ignore white lines or lines starting with #
 		    //printf("Ignore this stuff\n");
 		} else{
-		    printf("Line: %s",line);
+		    //printf("Line: %s",line);
 		    /* Lets get our ACTION TYPE PARAM here! */
 		    //First we need to split the line by white space to get our three arguments
 		    char * token = strtok(line," \t\n");
-		    //char * action, type, param;
+		    //Then we save them into local char * so we can add a rule to our list
 		    char * action = strdup(token);
-			printf("ACTITON: %s\n",action);
+			//printf("ACTITON: %s\n",action);
 			token = strtok(NULL," \t\n");
 		    char * type = strdup(token);
-			printf("TYPE: %s\n",type);
+			//printf("TYPE: %s\n",type);
 			token = strtok(NULL," \t\n");
 		    char * param = strdup(token);
-			printf("PARAM: %s\n",param);
+			//printf("PARAM: %s\n",param);
+
+		    //Check rule start flag, if it is 1, add to head, and set flag as 0, else add to tail
+		    if( rule_start == 1){
+			listAdd(action,type,param,false);
+			rule_start = 0;
+		    }else{
+			listAdd(action,type,param,true);
+		    }
+		    printDateLog();
+		    fprintf(logfp,"ubuntu phunt: found and added rule < ACTION:%s\tTYPE:%s\tPARAM:%s >\n",action,type,param); 
+		    //Free memory used for local placeholders of action type param
+		    free(action);
+		    free(type);
+		    free(param);
 			
-/*int i = 0;
-    printf("cnt  token\n");
-    printf("==========\n");
-    while (token) {
-        printf("%2d %s\n", i++, token);
-        token = strtok(NULL, " \t\n");
-    }*/
 		}	
 	}
 
+/*Lets print our rules on the cmd line!*/
+printf("List after saving rules!\n");
+printList();
+
+/* Print to Log when we finished parsing the config file and have saved our rules */
+printDateLog();
+fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 
 //Sample infinite loop
 	while(1);
