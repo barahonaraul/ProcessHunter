@@ -320,7 +320,7 @@ int main( int argc, char *argv[]){
 		perror("Unable to get pid!");
 		exit(1);
 	}
-
+printf("pid %d\n",pid);
 // Build a string that will have the log message for when we start up the program
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);//Get values for our timestamp then build message
