@@ -29,7 +29,7 @@ struct RuleNode{
     char * action;
     char * type;
     char * param;
-    struct RuleNode *next; 
+    struct RuleNode *next;
 
 };
 
@@ -101,12 +101,15 @@ void printDateLog(){
 	fprintf(logfp,"%d-%d-%d %d:%d:%d ", tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
+/* Function that verifies if a file exists used to check existance of log and conf files*/
 int doesFileExist(const char * filename){
 struct stat st;
 int result = stat(filename,&st);
 return result == 0;
 }
 
+/*Function that checks if there is a file in the directory with the given tgid (ex. pid)
+ used for verification of a kill */
 int doesFileExistProc(long tgid){
 char path[20];
 snprintf(path,20,"/proc/%ld",tgid);
@@ -115,41 +118,46 @@ int result = stat(path,&st);
 return result == 0;
 }
 
+/* Function used mainly to get the username or status (running, sleeping etc.) of a process */
 char * get_status(long tgid, char * stat_wanted) {
-
+//Define some local variables for use as well as our result
 	char path[40], line[100], *p, *token, *result;
 	FILE* statusf;
-
+//Build up the path to proc/pid/status using inputted tgid value
 	snprintf(path,40,"/proc/%ld/status",tgid);
-
+//Lets attempt to open that file for reading
 	statusf =fopen(path,"r");
-	if(!statusf){
+	if(!statusf){//If it failed, then print to our log and abort
 		printDateLog();
 		fprintf(logfp,"ubuntu phunt: unable to open /proc/%ld/status in order to get %s! ERROR aborting!\n",tgid,stat_wanted);
 		exit(1);
 	}
-
+//If we can read, then lets look at our lines until we find the one that starts with our string stat_wanted
 	while(fgets(line, 100, statusf)) {
+    //Check if current line starts with string we want
 		if(strncmp(line, stat_wanted, (int)strlen(stat_wanted)) == 0){
-		//Ignore State:" and whitespace
-		p = line + (int)strlen(stat_wanted) + 1;
-		while(isspace(*p)) {
+		//If it starts with it then ignore "stat_wanted:" portion and whitespace
+		p = line + (int)strlen(stat_wanted) + 1;//skip "stat_wanted" portion
+		while(isspace(*p)) {//take care of any lingering whitespace
 		++p;
 		}
-		token = strtok(p," \t");
+    //Value p is the line after we get rid of the identifier text, but line may contain extra strings
+    //Lets tokenize the line and get rid of the parts we don't need
+		token = strtok(p," \t");//For the most part we only need the first value we see
 		if(strncmp(stat_wanted,"Uid:",4) == 0){
+    //If the stat we wanted was the Uid, we convert it to the username using getpwuid
 		struct passwd *pwd;
 		pwd = getpwuid(atoi(token));
-		result = strdup(pwd->pw_name);
-		}else{		
+		result = strdup(pwd->pw_name);//our result is not the username that matches the found uid
+		}else{
+    //If this was not a Uid lookup, then allocate memory and save the value
 		result = malloc(strlen(token) + 1);
 		strcpy(result, token);
 		}
-		break;
+		break;//Break out of our while because we have a result by now
 		}
-
 	}
-
+//Close our file and return our result
 	fclose(statusf);
 	return result;
 
@@ -220,7 +228,6 @@ void parse_command_line( int argc, char *argv[], FILE **log, FILE **conf )
 {
 		/* What to display on a usage error */
 	  const char *usage = "Usage: phunt -l <log file> -c <config>";
-
 	//Check to see that there are at most 5 args, anything over 5 means they put too many args, also check there is at least 1 arg
 	if(argc <= 5 && argc >= 1){
 		if(argc == 1){ //What to do when we want to use default log and config
@@ -229,28 +236,24 @@ void parse_command_line( int argc, char *argv[], FILE **log, FILE **conf )
 			getFileToAppend(log,d_log_path);
 			getFileToRead(conf,d_conf_path);
 
-
 		}else if(argc == 3){//What we want to do if they specify only the log or config file
 			if( strcmp(argv[1],"-l") == 0 ) {
 				//printf("We want the logfile %s \n",argv[2]);
 				//get the specified logfile descriptor we want here
 				char * spec_path = concat(d_log_dir,argv[2]);
 				getFileToAppend(log,spec_path);
-				free(spec_path);				
-				
+				free(spec_path);//free path once done using it
 				//get the default configfile descriptor here
 				getFileToRead(conf,d_conf_path);
 
-
 		  } else if ( strcmp(argv[1],"-c") == 0) {
-		    		//printf("We want the configfile %s \n",argv[2]);
+		    //printf("We want the configfile %s \n",argv[2]);
 				//get the default logfile descriptor here
 				getFileToAppend(log,d_log_path);
-
 				//get the specified configfile descriptor we want here
 				char * spec_path = concat(d_conf_dir,argv[2]);
 				getFileToRead(conf,spec_path);
-				free(spec_path);
+				free(spec_path);//free path once done using it
 
 		  }else{
 				//if our -l or -c was not our second argument
@@ -264,12 +267,11 @@ void parse_command_line( int argc, char *argv[], FILE **log, FILE **conf )
 					//get the specified logfile descriptor here
 					char * spec_path = concat(d_log_dir,argv[2]);
 					getFileToAppend(log,spec_path);
-					free(spec_path);
-
+					free(spec_path);//free once done using it
 					//get the specified configfile descriptor we want here
 					spec_path = concat(d_conf_dir,argv[4]);
 					getFileToRead(conf,spec_path);
-					free(spec_path);
+					free(spec_path);//free again after use
 
 			  }else{
 					//if our -l or -c argurments were wrong
@@ -281,7 +283,6 @@ void parse_command_line( int argc, char *argv[], FILE **log, FILE **conf )
 		    printf( "%s\n\n", usage );
 				exit(1);
 		}
-
 	}else{
 		//any amount of args over 5 or less than 1 is bad usage
 	    printf( "%s\n\n", usage );
@@ -289,6 +290,7 @@ void parse_command_line( int argc, char *argv[], FILE **log, FILE **conf )
 	}
 }
 
+/* Function that checks that a line consist of non non visible characters */
 int is_empty(const char *s) {
   while (*s != '\0') {
     if (!isspace(*s))
@@ -304,17 +306,18 @@ int is_empty(const char *s) {
  */
 void stop_and_exit( int signo )
 {
+  //Close our log file
   if( logfp != NULL ) {
     fclose( logfp );
   }
+  //close our configuration file
   if( conf != NULL ) {
     fclose(conf);
   }
-
-  freeList();
-
+  //free our rules list memory
+ freeList();
+//exit gracefully!
  exit(0);
-
 }
 
 int main( int argc, char *argv[]){
@@ -364,13 +367,12 @@ printf("pid %d\n",pid);
 			listAdd(action,type,param,true);
 		    }
 		    printDateLog();
-		    fprintf(logfp,"ubuntu phunt: found and added rule < ACTION:%s\tTYPE:%s\tPARAM:%s >\n",action,type,param); 
+		    fprintf(logfp,"ubuntu phunt: found and added rule < ACTION:%s\tTYPE:%s\tPARAM:%s >\n",action,type,param);
 		    //Free memory used for local placeholders of action type param
 		    free(action);
 		    free(type);
 		    free(param);
-			
-		}	
+		}
 	}
 
 /*Lets print our rules on the cmd line!*/
@@ -385,101 +387,106 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 	DIR* proc = opendir("/proc");
 	struct dirent* ent;
 	long tgid;
-	
 
+//Throw error and quit if we can open /proc
 	if(proc == NULL){
 		perror("opendir(/proc)");
 		return 1;
 	}
-
+/* Lets read proc and find our processes */
 	while( ent = readdir(proc)) {
 	//look if the folder being looked at is a digit (meaning its a process folder)
 		if(!isdigit(*ent->d_name))
 			continue; //If it is not we continue to the next file in the proc dir
 		RuleNode *iterator = head;//Start our rule iterator pointer at the head
-		char * state;
-		char * username;
+		char * state;//a local value to hold the state of the process we are scanning
+		char * username;//local value to hold the username of the owner of the process being scanned
+    char * path;//value that holds path to process being scanned
+    char * memory;//value that holds memory use size of process being scanned
 		//If we didn't continue, then convert the name of the folder into a long which holds the pid
-		tgid = strtol(ent->d_name, NULL, 10);
-		//Get the values for the process status and username		
+		tgid = strtol(ent->d_name, NULL, 10); //tgid is our pid of the process being scanned
+		//Get the values for the process status, username, path, and memory
 		state = get_status(tgid,"State:");
 		username = get_status(tgid,"Uid:");
+    //get path here
+    //get memory here
 		printf("pid: %ld\n",tgid);
 		int breaker = 0;
 
 		//Print to log Scanning process (PID = pid)
+    printDateLog();
+    fprintf(logfp, "ubuntu phunt: scanning process with PID = %ld\n",tgid );
 		/* Check all rules on this process here */
 		while(iterator != NULL && breaker == 0) {
-			/* Code that checks for matches of type <user> */
-    			if( strcmp(iterator->type,"user") == 0 && strcmp(iterator->param,username) == 0){
-				if( strcmp(iterator->action,"kill") == 0){		
-				printf("Preform action %s:\n", iterator->action);
-				//wait a little maybe
-				//check if killed and print confirmation status
-				//break out of rule checking and move on to next process
-				breaker = 1;
-				}else if(strcmp(iterator->action,"suspend") == 0){
-				//preform suspend
-				//wait a little
-				//check suspension and print confirmation status
-				//do not break
-				}else if(strcmp(iterator->action,"nice") == 0){
-				//preform nice
-				//wait a little
-				//check nice and print confirmation
-				//do not break
-				}
-    			}
+			  /* Code that checks for matches of type <user> */
+    		if( strcmp(iterator->type,"user") == 0 && strcmp(iterator->param,username) == 0){
+          if( strcmp(iterator->action,"kill") == 0){
+            printf("Preform action %s:\n", iterator->action);
+            //wait a little maybe
+            //check if killed and print confirmation status
+            //break out of rule checking and move on to next process
+            breaker = 1;
+          }else if(strcmp(iterator->action,"suspend") == 0){
+            //preform suspend
+            //wait a little
+            //check suspension and print confirmation status
+            //do not break
+          }else if(strcmp(iterator->action,"nice") == 0){
+            //preform nice
+            //wait a little
+            //check nice and print confirmation
+            //do not break
+          }
+    		}
 
-			/* Code that checks for matches of type <path> 
-    			if( strcmp(iterator->type,"user") == 0 && strcmp(iterator->param,username) == 0){
-				if( strcmp(iterator->action,"kill") == 0){		
-				printf("Preform action %s:\n", iterator->action);
-				//wait a little maybe
-				//check if killed and print confirmation status
-				//break out of rule checking and move on to next process
-				breaker = 1;
-				}else if(strcmp(iterator->action,"suspend") == 0){
-				//preform suspend
-				//wait a little
-				//check suspension and print confirmation status
-				//do not break
-				}else if(strcmp(iterator->action,"nice") == 0){
-				//preform nice
-				//wait a little
-				//check nice and print confirmation
-				//do not break
-				}
-    			}*/
+			 /*Code that checks for matches of type <path>
+    		if( strcmp(iterator->type,"user") == 0 && strcmp(iterator->param,username) == 0){
+          if( strcmp(iterator->action,"kill") == 0){
+            printf("Preform action %s:\n", iterator->action);
+    				//wait a little maybe
+    				//check if killed and print confirmation status
+    				//break out of rule checking and move on to next process
+    				breaker = 1;
+  				}else if(strcmp(iterator->action,"suspend") == 0){
+            //preform suspend
+    				//wait a little
+    				//check suspension and print confirmation status
+    				//do not break
+  				}else if(strcmp(iterator->action,"nice") == 0){
+            //preform nice
+    				//wait a little
+    				//check nice and print confirmation
+    				//do not break
+  				}
+    		}*/
 
-			/* Code that checks for matches of type <memory> 
-    			if( strcmp(iterator->type,"memory") == 0 && strcmp(iterator->param,username) == 0){
-				if( strcmp(iterator->action,"kill") == 0){		
-				printf("Preform action %s:\n", iterator->action);
-				//wait a little maybe
-				//check if killed and print confirmation status
-				//break out of rule checking and move on to next process
-				breaker = 1;
-				}else if(strcmp(iterator->action,"suspend") == 0){
-				//preform suspend
-				//wait a little
-				//check suspension and print confirmation status
-				//do not break
-				}else if(strcmp(iterator->action,"nice") == 0){
-				//preform nice
-				//wait a little
-				//check nice and print confirmation
-				//do not break
-				}
-    			}*/
-
-
+			 /*Code that checks for matches of type <memory>
+    		if( strcmp(iterator->type,"memory") == 0 && strcmp(iterator->param,username) == 0){
+          if( strcmp(iterator->action,"kill") == 0){
+            printf("Preform action %s:\n", iterator->action);
+            //wait a little maybe
+    				//check if killed and print confirmation status
+    				//break out of rule checking and move on to next process
+    				breaker = 1;
+  				}else if(strcmp(iterator->action,"suspend") == 0){
+            //preform suspend
+    				//wait a little
+    				//check suspension and print confirmation status
+    				//do not break
+  				}else if(strcmp(iterator->action,"nice") == 0){
+            //preform nice
+    				//wait a little
+    				//check nice and print confirmation
+    				//do not break
+  				}
+    		}*/
 
 			iterator = iterator->next;
-			
-  		}
-		//Print to log done scanning process (PID = pid) 
 
+  		}
+		//Print to log done scanning process (PID = pid)
+    printDateLog();
+    fprintf(logfp, "ubuntu phunt: completed scanning for process PID = %ld\n",tgid);
 		//printf("State %s and user %s:\n", state, username);
 		free(state);
 		free(username);
@@ -499,16 +506,4 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 	}
 
 	return 0;
-/*
-//How to get the username as a string (will use this later)
-	struct passwd *pwd;
-	pwd = getpwuid(atoi("1000"));
-	printf("username: %s\n",pwd->pw_name);
-*/
-
-
-
-
-
-
 }
