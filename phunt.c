@@ -125,7 +125,7 @@ char * get_status(long tgid, char * stat_wanted) {
 	statusf =fopen(path,"r");
 	if(!statusf){
 		printDateLog();
-		fprintf(logfp,"ubuntu phunt: unable to open /proc/%ld/status in order to get %s! ERROR aborting!",tgid,stat_wanted);
+		fprintf(logfp,"ubuntu phunt: unable to open /proc/%ld/status in order to get %s! ERROR aborting!\n",tgid,stat_wanted);
 		exit(1);
 	    //return NULL;
 	}
