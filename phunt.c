@@ -172,7 +172,7 @@ int get_nice(long tgid) {
 
     int nice;
     fscanf(f, "%*d %*s %*c %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %d ",&nice);
-    printf("nice of pid %ld is = %d\n", tgid,nice);
+    //printf("nice of pid %ld is = %d\n", tgid,nice);
 
     
     fclose(f);
@@ -189,13 +189,36 @@ long get_memory(long tgid) {
 
     long memory;
     fscanf(f, "%ld",&memory);
-    printf("memory of pid %ld is = %ld\n", tgid, memory);
+    //printf("memory of pid %ld is = %ld\n", tgid, memory);
 
     
     fclose(f);
 
     return memory;
 
+}
+
+char * get_path(long tgid) {
+    char path[40];
+    char* result;
+    sprintf(path, "/proc/%ld/exe", tgid);
+    char buf[PATH_MAX];
+    int amount_read;
+printf("path being readlink from: %s\n",path);
+    amount_read = readlink(path,buf,sizeof(buf)-1);
+    if( amount_read != -1 ){
+	buf[amount_read] = '\0';
+	result = malloc( amount_read + 1);
+        strcpy(result,buf);
+    }else{
+	printf("Unable to read path for pid: %ld aborting!\n",tgid);
+	perror("What is it:");	
+	result = NULL;
+	exit(1);
+    }
+	
+    printf(" path for pid:%ld is : %s\n",tgid,result); 
+    return result;
 }
 
 void getFileToRead(FILE **fp, char *p){
@@ -437,24 +460,26 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 		char * state;//a local value to hold the state of the process we are scanning
 		char * username;//local value to hold the username of the owner of the process being scanned
     char * path;//value that holds path to process being scanned
-    char * memory;//value that holds memory use size of process being scanned
+    long memory;//value that holds memory use size of process being scanned
+    int nice; //value that holds nice value
 		//If we didn't continue, then convert the name of the folder into a long which holds the pid
 		tgid = strtol(ent->d_name, NULL, 10); //tgid is our pid of the process being scanned
 		//Get the values for the process status, username, path, and memory
 		state = get_status(tgid,"State:");
 		username = get_status(tgid,"Uid:");
 		get_nice(tgid);
-		get_memory(tgid);
+		memory = get_memory(tgid);
+		//path = get_path(tgid);
     //get path here
     //get memory here
-		printf("pid: %ld\n",tgid);
+		printf("pid: %ld\t\tuser:%s\t\tmem:%ld\t\tnice:%d\n",tgid,username,memory,nice);
 		int breaker = 0;
 
 		//Print to log Scanning process (PID = pid)
-    //printDateLog();
-    //fprintf(logfp, "ubuntu phunt: scanning process with PID = %ld\n",tgid );
+    printDateLog();
+    fprintf(logfp, "ubuntu phunt: scanning process with PID = %ld\n",tgid );
 		/* Check all rules on this process here */
-		while(0){//while(iterator != NULL && breaker == 0) {
+		while(iterator != NULL && breaker == 0) {
 			  /* Code that checks for matches of type <user> */
     		if( strcmp(iterator->type,"user") == 0 && strcmp(iterator->param,username) == 0){
           if( strcmp(iterator->action,"kill") == 0){
@@ -522,11 +547,12 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 
   		}
 		//Print to log done scanning process (PID = pid)
-    //printDateLog();
-    //fprintf(logfp, "ubuntu phunt: completed scanning for process PID = %ld\n",tgid);
+    printDateLog();
+    fprintf(logfp, "ubuntu phunt: completed scanning for process PID = %ld\n",tgid);
 		//printf("State %s and user %s:\n", state, username);
 		free(state);
 		free(username);
+		//free(path);
 	}
 //Sample infinite loop
 	while(1);
