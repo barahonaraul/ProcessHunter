@@ -163,6 +163,41 @@ char * get_status(long tgid, char * stat_wanted) {
 
 }
 
+/* Function used mainly to get the username or status (running, sleeping etc.) of a process */
+int get_nice(long tgid) {
+    
+    char filename[100];
+    sprintf(filename, "/proc/%ld/stat", tgid);
+    FILE *f = fopen(filename, "r");
+
+    int nice;
+    fscanf(f, "%*d %*s %*c %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %d ",&nice);
+    printf("nice of pid %ld is = %d\n", tgid,nice);
+
+    
+    fclose(f);
+
+    return nice;
+
+}
+
+long get_memory(long tgid) {
+    
+    char filename[100];
+    sprintf(filename, "/proc/%ld/statm", tgid);
+    FILE *f = fopen(filename, "r");
+
+    long memory;
+    fscanf(f, "%ld",&memory);
+    printf("memory of pid %ld is = %ld\n", tgid, memory);
+
+    
+    fclose(f);
+
+    return memory;
+
+}
+
 void getFileToRead(FILE **fp, char *p){
 //First check to see if the file exists, if it doesn't abort
 if(doesFileExist(p)){
@@ -408,16 +443,18 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 		//Get the values for the process status, username, path, and memory
 		state = get_status(tgid,"State:");
 		username = get_status(tgid,"Uid:");
+		get_nice(tgid);
+		get_memory(tgid);
     //get path here
     //get memory here
 		printf("pid: %ld\n",tgid);
 		int breaker = 0;
 
 		//Print to log Scanning process (PID = pid)
-    printDateLog();
-    fprintf(logfp, "ubuntu phunt: scanning process with PID = %ld\n",tgid );
+    //printDateLog();
+    //fprintf(logfp, "ubuntu phunt: scanning process with PID = %ld\n",tgid );
 		/* Check all rules on this process here */
-		while(iterator != NULL && breaker == 0) {
+		while(0){//while(iterator != NULL && breaker == 0) {
 			  /* Code that checks for matches of type <user> */
     		if( strcmp(iterator->type,"user") == 0 && strcmp(iterator->param,username) == 0){
           if( strcmp(iterator->action,"kill") == 0){
@@ -485,8 +522,8 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 
   		}
 		//Print to log done scanning process (PID = pid)
-    printDateLog();
-    fprintf(logfp, "ubuntu phunt: completed scanning for process PID = %ld\n",tgid);
+    //printDateLog();
+    //fprintf(logfp, "ubuntu phunt: completed scanning for process PID = %ld\n",tgid);
 		//printf("State %s and user %s:\n", state, username);
 		free(state);
 		free(username);
