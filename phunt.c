@@ -116,7 +116,7 @@ return result == 0;
 }
 
 char * get_status(long tgid, char * stat_wanted) {
-//printf("len:%d\n",(int)strlen(stat_wanted));
+
 	char path[40], line[100], *p, *token, *result;
 	FILE* statusf;
 
@@ -127,7 +127,6 @@ char * get_status(long tgid, char * stat_wanted) {
 		printDateLog();
 		fprintf(logfp,"ubuntu phunt: unable to open /proc/%ld/status in order to get %s! ERROR aborting!\n",tgid,stat_wanted);
 		exit(1);
-	    //return NULL;
 	}
 
 	while(fgets(line, 100, statusf)) {
@@ -146,8 +145,6 @@ char * get_status(long tgid, char * stat_wanted) {
 		result = malloc(strlen(token) + 1);
 		strcpy(result, token);
 		}
-		//printf("%s\n",stat_wanted);
-		//printf("%6ld %s\n", tgid, result);
 		break;
 		}
 
@@ -407,10 +404,83 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 		//Get the values for the process status and username		
 		state = get_status(tgid,"State:");
 		username = get_status(tgid,"Uid:");
-		/* Check all rules on this process here */
-		
+		printf("pid: %ld\n",tgid);
+		int breaker = 0;
 
-		printf("State %s and user %s:\n", state, username);
+		//Print to log Scanning process (PID = pid)
+		/* Check all rules on this process here */
+		while(iterator != NULL && breaker == 0) {
+			/* Code that checks for matches of type <user> */
+    			if( strcmp(iterator->type,"user") == 0 && strcmp(iterator->param,username) == 0){
+				if( strcmp(iterator->action,"kill") == 0){		
+				printf("Preform action %s:\n", iterator->action);
+				//wait a little maybe
+				//check if killed and print confirmation status
+				//break out of rule checking and move on to next process
+				breaker = 1;
+				}else if(strcmp(iterator->action,"suspend") == 0){
+				//preform suspend
+				//wait a little
+				//check suspension and print confirmation status
+				//do not break
+				}else if(strcmp(iterator->action,"nice") == 0){
+				//preform nice
+				//wait a little
+				//check nice and print confirmation
+				//do not break
+				}
+    			}
+
+			/* Code that checks for matches of type <path> 
+    			if( strcmp(iterator->type,"user") == 0 && strcmp(iterator->param,username) == 0){
+				if( strcmp(iterator->action,"kill") == 0){		
+				printf("Preform action %s:\n", iterator->action);
+				//wait a little maybe
+				//check if killed and print confirmation status
+				//break out of rule checking and move on to next process
+				breaker = 1;
+				}else if(strcmp(iterator->action,"suspend") == 0){
+				//preform suspend
+				//wait a little
+				//check suspension and print confirmation status
+				//do not break
+				}else if(strcmp(iterator->action,"nice") == 0){
+				//preform nice
+				//wait a little
+				//check nice and print confirmation
+				//do not break
+				}
+    			}*/
+
+			/* Code that checks for matches of type <memory> 
+    			if( strcmp(iterator->type,"memory") == 0 && strcmp(iterator->param,username) == 0){
+				if( strcmp(iterator->action,"kill") == 0){		
+				printf("Preform action %s:\n", iterator->action);
+				//wait a little maybe
+				//check if killed and print confirmation status
+				//break out of rule checking and move on to next process
+				breaker = 1;
+				}else if(strcmp(iterator->action,"suspend") == 0){
+				//preform suspend
+				//wait a little
+				//check suspension and print confirmation status
+				//do not break
+				}else if(strcmp(iterator->action,"nice") == 0){
+				//preform nice
+				//wait a little
+				//check nice and print confirmation
+				//do not break
+				}
+    			}*/
+
+
+
+			iterator = iterator->next;
+			
+  		}
+		//Print to log done scanning process (PID = pid) 
+
+		//printf("State %s and user %s:\n", state, username);
 		free(state);
 		free(username);
 	}
