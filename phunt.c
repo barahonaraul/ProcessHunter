@@ -107,61 +107,54 @@ int result = stat(filename,&st);
 return result == 0;
 }
 
-void print_status(long tgid) {
-	char path[40], line[100], *p, *token;
-	FILE* statusf;
-
-	snprintf(path,40,"/proc/%ld/status",tgid);
-
-	statusf =fopen(path,"r");
-	if(!statusf)
-	    return;
-
-	while(fgets(line, 100, statusf)) {
-		if(strncmp(line, "Uid:", 4))
-		    continue;
-
-		//Ignore Uid:" and whitespace
-		p = line + 5;
-		while(isspace(*p)) {
-		++p;
-		}
-		token = strtok(p," \t");
-
-		printf("%6ld %s\n", tgid, token);
-		break;
-	}
-
-	fclose(statusf);
-
+int doesFileExistProc(long tgid){
+char path[20];
+snprintf(path,20,"/proc/%ld",tgid);
+struct stat st;
+int result = stat(path,&st);
+return result == 0;
 }
 
-void print_uid(long tgid) {
-	char path[40], line[100], *p, *token;
+char * get_status(long tgid, char * stat_wanted) {
+//printf("len:%d\n",(int)strlen(stat_wanted));
+	char path[40], line[100], *p, *token, *result;
 	FILE* statusf;
 
 	snprintf(path,40,"/proc/%ld/status",tgid);
 
 	statusf =fopen(path,"r");
-	if(!statusf)
-	    return;
+	if(!statusf){
+		printDateLog();
+		fprintf(logfp,"ubuntu phunt: unable to open /proc/%ld/status in order to get %s! ERROR aborting!",tgid,stat_wanted);
+		exit(1);
+	    //return NULL;
+	}
 
 	while(fgets(line, 100, statusf)) {
-		if(strncmp(line, "Uid:", 4))
-		    continue;
-
-		//Ignore Uid:" and whitespace
-		p = line + 5;
+		if(strncmp(line, stat_wanted, (int)strlen(stat_wanted)) == 0){
+		//Ignore State:" and whitespace
+		p = line + (int)strlen(stat_wanted) + 1;
 		while(isspace(*p)) {
 		++p;
 		}
 		token = strtok(p," \t");
-
-		printf("%6ld %s\n", tgid, token);
+		if(strncmp(stat_wanted,"Uid:",4) == 0){
+		struct passwd *pwd;
+		pwd = getpwuid(atoi(token));
+		result = strdup(pwd->pw_name);
+		}else{		
+		result = malloc(strlen(token) + 1);
+		strcpy(result, token);
+		}
+		//printf("%s\n",stat_wanted);
+		//printf("%6ld %s\n", tgid, result);
 		break;
+		}
+
 	}
 
 	fclose(statusf);
+	return result;
 
 }
 
@@ -395,6 +388,7 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 	DIR* proc = opendir("/proc");
 	struct dirent* ent;
 	long tgid;
+	
 
 	if(proc == NULL){
 		perror("opendir(/proc)");
@@ -405,12 +399,20 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 	//look if the folder being looked at is a digit (meaning its a process folder)
 		if(!isdigit(*ent->d_name))
 			continue; //If it is not we continue to the next file in the proc dir
-
+		RuleNode *iterator = head;//Start our rule iterator pointer at the head
+		char * state;
+		char * username;
 		//If we didn't continue, then convert the name of the folder into a long which holds the pid
 		tgid = strtol(ent->d_name, NULL, 10);
-		//Pass it in our function to read the contents for that process
-		//printf("The process being looked at is %ld \n",tgid);		
-		print_status(tgid);
+		//Get the values for the process status and username		
+		state = get_status(tgid,"State:");
+		username = get_status(tgid,"Uid:");
+		/* Check all rules on this process here */
+		
+
+		printf("State %s and user %s:\n", state, username);
+		free(state);
+		free(username);
 	}
 //Sample infinite loop
 	while(1);
