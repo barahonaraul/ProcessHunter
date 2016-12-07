@@ -108,7 +108,7 @@ return result == 0;
 }
 
 void print_status(long tgid) {
-	char path[40], line[100], *p;
+	char path[40], line[100], *p, *token;
 	FILE* statusf;
 
 	snprintf(path,40,"/proc/%ld/status",tgid);
@@ -121,25 +121,43 @@ void print_status(long tgid) {
 		if(strncmp(line, "Uid:", 4))
 		    continue;
 
-		//Ignore "State:" and whitespace
+		//Ignore Uid:" and whitespace
 		p = line + 5;
 		while(isspace(*p)) {
-		//printf("%c\n",p);
 		++p;
 		}
+		token = strtok(p," \t");
 
-//printf("%c\n",p[1]);
+		printf("%6ld %s\n", tgid, token);
+		break;
+	}
 
-		/*int count = 0;
-		while(!isspace(*p)){
-		printf("%c\n",p);
-		++count;
+	fclose(statusf);
+
+}
+
+void print_uid(long tgid) {
+	char path[40], line[100], *p, *token;
+	FILE* statusf;
+
+	snprintf(path,40,"/proc/%ld/status",tgid);
+
+	statusf =fopen(path,"r");
+	if(!statusf)
+	    return;
+
+	while(fgets(line, 100, statusf)) {
+		if(strncmp(line, "Uid:", 4))
+		    continue;
+
+		//Ignore Uid:" and whitespace
+		p = line + 5;
+		while(isspace(*p)) {
+		++p;
 		}
+		token = strtok(p," \t");
 
-		char str[count];
-		strncpy(str,p,count);*/
-		//printf("done\n");
-		printf("%6ld %s", tgid, p);
+		printf("%6ld %s\n", tgid, token);
 		break;
 	}
 
@@ -372,7 +390,28 @@ printList();
 /* Print to Log when we finished parsing the config file and have saved our rules */
 printDateLog();
 fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
+//Reading the proc/ directory
+//set up the DIR
+	DIR* proc = opendir("/proc");
+	struct dirent* ent;
+	long tgid;
 
+	if(proc == NULL){
+		perror("opendir(/proc)");
+		return 1;
+	}
+
+	while( ent = readdir(proc)) {
+	//look if the folder being looked at is a digit (meaning its a process folder)
+		if(!isdigit(*ent->d_name))
+			continue; //If it is not we continue to the next file in the proc dir
+
+		//If we didn't continue, then convert the name of the folder into a long which holds the pid
+		tgid = strtol(ent->d_name, NULL, 10);
+		//Pass it in our function to read the contents for that process
+		//printf("The process being looked at is %ld \n",tgid);		
+		print_status(tgid);
+	}
 //Sample infinite loop
 	while(1);
 
@@ -393,31 +432,11 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 	struct passwd *pwd;
 	pwd = getpwuid(atoi("1000"));
 	printf("username: %s\n",pwd->pw_name);
-
-//Reading the proc/ directory
-//set up the DIR
-	DIR* proc = opendir("/proc");
-	struct dirent* ent;
-	long tgid;
-
-	if(proc == NULL){
-		perror("opendir(/proc)");
-		return 1;
-	}
-
-	while( ent = readdir(proc)) {
-	//look if the folder being looked at is a digit (meaning its a process folder)
-		if(!isdigit(*ent->d_name))
-			continue; //If it is not we continue to the next file in the proc dir
-
-		//If we didn't continue, then convert the name of the folder into a long which holds the pid
-		tgid = strtol(ent->d_name, NULL, 10);
-		//Pass it in our function to read the contents for that process
-		print_status(tgid);
-	}
-
-
 */
+
+
+
+
 
 
 }
