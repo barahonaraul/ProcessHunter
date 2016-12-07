@@ -484,6 +484,18 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
     		if( strcmp(iterator->type,"user") == 0 && strcmp(iterator->param,username) == 0){
           if( strcmp(iterator->action,"kill") == 0){
             printf("Preform action %s:\n", iterator->action);
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: killing process PID = %ld due to owner user being %s\n",tgid,username);
+	    kill(tgid, SIGKILL);
+
+	    fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
+	    if(!doesFileExistProc(tgid)){
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
+	    }else{
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt:process PID = %ld may have not terminated or another process has appeared with same PID\n",tgid);
+	    }
             //wait a little maybe
             //check if killed and print confirmation status
             //break out of rule checking and move on to next process
