@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/resource.h>
 
 FILE *logfp = NULL;
 FILE *conf = NULL;
@@ -487,7 +488,9 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 	    printDateLog();
 	    fprintf(logfp,"ubuntu phunt: killing process PID = %ld due to owner user being %s\n",tgid,username);
 	    kill(tgid, SIGKILL);
+            //wait a little maybe
 	    usleep(10000);
+            //check if killed and print confirmation status
 	    printDateLog();
 	    fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
 	    if(!doesFileExistProc(tgid)){
@@ -495,38 +498,50 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 	    fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
 	    }else{
 	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:process PID = %ld may have not terminated or another process has appeared with same PID\n",tgid);
+	    fprintf(logfp,"ubuntu phunt:process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
 	    }
-            //wait a little maybe
-            //check if killed and print confirmation status
             //break out of rule checking and move on to next process
             breaker = 1;
-          }else if(strcmp(iterator->action,"suspend") == 0 && tgid == 3677){
+          }else if(strcmp(iterator->action,"suspend") == 0){
             //preform suspend
             printf("Preform action %s:\n", iterator->action);
 	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: suspending process PID = %ld due to owner user being %s\n",tgid,username);
-	    kill(tgid, SIGTSTP);
+	    fprintf(logfp,"ubuntu phunt: SUSPENDING process PID = %ld due to owner user being %s\n",tgid,username);
+	    kill(tgid, SIGSTOP);
             //wait a little
 	    usleep(10000);
             //check suspension and print confirmation status
 	    char* t_s = get_status(tgid,"State:");
 	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:process PID = %ld should be SUSPENDED, verifying now\n",tgid);
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld should be SUSPENDED, verifying now\n",tgid);
 	    if(t_s[0] == 'T'){
 	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully SUSPENDED\n",tgid);
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld has been successfully SUSPENDED\n",tgid);
 	    free(t_s);
 	    }else{
 	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:WARNING process PID = %ld did not SUSPEND\n",tgid);
+	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld did not SUSPEND\n",tgid);
 	    free(t_s);
 	    }
             //do not break
           }else if(strcmp(iterator->action,"nice") == 0){
             //preform nice
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: INCREASING PRIORITY of process PID = %ld due to owner user being %s\n",tgid,username);
+	    int which = PRIO_PROCESS;
+	    int ret = setpriority(which, tgid, -20);
             //wait a little
+	    usleep(10000);
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld should have priority of -20, verifying now\n",tgid);
             //check nice and print confirmation
+	    if(get_nice(tgid) == -20){
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld has been priority INCREASE SUCCESSFUL\n",tgid);
+	    }else{
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld priority increase UNSUCCESSFUL\n",tgid); 
+	    }	
             //do not break
           }
     		}
