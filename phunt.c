@@ -571,28 +571,76 @@ while(1){
     		}*/
 
 			 /*Code that checks for matches of type <memory>*/
-    		if( strcmp(iterator->type,"memory") == 0 && tgid == 4694){// && strcmp(username,"ral") == 0){
+    		if( strcmp(iterator->type,"memory") == 0){// && strcmp(username,"ral") == 0){
           	int limit = atoi(iterator->param);
-		printf("LIMIT IS : %d CURRENT MEM IS:%d\n",limit,(int)(get_memory(tgid)/1000));
+		//printf("LIMIT IS : %d CURRENT MEM IS:%d\n",limit,(int)(get_memory(tgid)/1000));
+		//First check that process is over memory ceiling, we are given memory in KB so divde by 1000 to get MB		
 		if( (int)(get_memory(tgid)/1000) >= limit){
 			printf(" pid: %ld over limit!\n",tgid);
-			/*if( strcmp(iterator->action,"kill") == 0){
-            			printf("Preform action %s:\n", iterator->action);
-            			//wait a little maybe
-    				//check if killed and print confirmation status
-    				//break out of rule checking and move on to next process
-    				breaker = 1;
-  				}else if(strcmp(iterator->action,"suspend") == 0){
-            			//preform suspend
-    				//wait a little
-    				//check suspension and print confirmation status
-    				//do not break
-  				}else if(strcmp(iterator->action,"nice") == 0){
-            			//preform nice
-    				//wait a little
-    				//check nice and print confirmation
-    				//do not break
-  				}*/
+			printDateLog();
+			fprintf(logfp,"ubuntu phunt: process PID = %ld over memory ceiling of %s MB !\n",tgid,iterator->param);
+          if( strcmp(iterator->action,"kill") == 0){
+            printf("Preform action %s:\n", iterator->action);
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: killing process PID = %ld due to being over memory limit!\n",tgid);
+	    kill(tgid, SIGKILL);
+            //wait a little maybe
+	    usleep(10000);
+            //check if killed and print confirmation status
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
+	    if(!doesFileExistProc(tgid)){
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
+	    }else{
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt:process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
+	    }
+            //break out of rule checking and move on to next process
+            breaker = 1;
+          }else if(strcmp(iterator->action,"suspend") == 0){
+            //preform suspend
+            printf("Preform action %s:\n", iterator->action);
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: SUSPENDING process PID = %ld due to being over memory limit %s\n",tgid,username);
+	    kill(tgid, SIGSTOP);
+            //wait a little
+	    usleep(10000);
+            //check suspension and print confirmation status
+	    char* t_s = get_status(tgid,"State:");
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld should be SUSPENDED, verifying now\n",tgid);
+	    if(t_s[0] == 'T'){
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld has been successfully SUSPENDED\n",tgid);
+	    free(t_s);
+	    }else{
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld did not SUSPEND\n",tgid);
+	    free(t_s);
+	    }
+            //do not break
+          }else if(strcmp(iterator->action,"nice") == 0){
+            //preform nice
+            printf("Preform action %s:\n", iterator->action);
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: INCREASING PRIORITY of process PID = %ld due to being over memory ceiling %s\n",tgid,username);
+	    int which = PRIO_PROCESS;
+	    int ret = setpriority(which, tgid, -20);
+            //wait a little
+	    usleep(10000);
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld should have priority of -20, verifying now\n",tgid);
+            //check nice and print confirmation
+	    if(get_nice(tgid) == -20){
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld priority increase SUCCESSFUL\n",tgid);
+	    }else{
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld priority increase UNSUCCESSFUL\n",tgid); 
+	    }	
+            //do not break
+          }
     		}
 		}
 		
