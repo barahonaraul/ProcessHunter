@@ -571,7 +571,7 @@ while(1){
     		}*/
 
 			 /*Code that checks for matches of type <memory>*/
-    		if( strcmp(iterator->type,"memory") == 0){// && strcmp(username,"ral") == 0){
+    		if( strcmp(iterator->type,"memory") == 0){
           	int limit = atoi(iterator->param);
 		//printf("LIMIT IS : %d CURRENT MEM IS:%d\n",limit,(int)(get_memory(tgid)/1000));
 		//First check that process is over memory ceiling, we are given memory in KB so divde by 1000 to get MB		
