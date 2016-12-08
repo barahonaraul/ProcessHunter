@@ -487,7 +487,8 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 	    printDateLog();
 	    fprintf(logfp,"ubuntu phunt: killing process PID = %ld due to owner user being %s\n",tgid,username);
 	    kill(tgid, SIGKILL);
-
+	    usleep(10000);
+	    printDateLog();
 	    fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
 	    if(!doesFileExistProc(tgid)){
 	    printDateLog();
@@ -500,10 +501,27 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
             //check if killed and print confirmation status
             //break out of rule checking and move on to next process
             breaker = 1;
-          }else if(strcmp(iterator->action,"suspend") == 0){
+          }else if(strcmp(iterator->action,"suspend") == 0 && tgid == 3677){
             //preform suspend
+            printf("Preform action %s:\n", iterator->action);
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: suspending process PID = %ld due to owner user being %s\n",tgid,username);
+	    kill(tgid, SIGTSTP);
             //wait a little
+	    usleep(10000);
             //check suspension and print confirmation status
+	    char* t_s = get_status(tgid,"State:");
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt:process PID = %ld should be SUSPENDED, verifying now\n",tgid);
+	    if(t_s[0] == 'T'){
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully SUSPENDED\n",tgid);
+	    free(t_s);
+	    }else{
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt:WARNING process PID = %ld did not SUSPEND\n",tgid);
+	    free(t_s);
+	    }
             //do not break
           }else if(strcmp(iterator->action,"nice") == 0){
             //preform nice
