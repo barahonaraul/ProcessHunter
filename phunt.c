@@ -199,26 +199,27 @@ long get_memory(long tgid) {
 
 }
 
+/* get the path of a process given it's id, if we are unable to read it, then return null and print an error message*/
 char * get_path(long tgid) {
     char path[40];
     char* result;
     sprintf(path, "/proc/%ld/exe", tgid);
     char buf[PATH_MAX];
     int amount_read;
-printf("path being readlink from: %s\n",path);
+//printf("path being readlink from: %s\n",path);
     amount_read = readlink(path,buf,sizeof(buf)-1);
     if( amount_read != -1 ){
 	buf[amount_read] = '\0';
+printf("THIS IS IN tHE BUFFER: %s\n",buf);
 	result = malloc( amount_read + 1);
         strcpy(result,buf);
     }else{
-	printf("Unable to read path for pid: %ld aborting!\n",tgid);
-	perror("What is it:");	
+	fprintf(stderr,"Unable to read path for pid: %ld : ",tgid);
+	perror("");	
 	result = NULL;
-	exit(1);
     }
 	
-    printf(" path for pid:%ld is : %s\n",tgid,result); 
+    printf("path for pid:%ld is : %s\n",tgid,result); 
     return result;
 }
 
@@ -472,9 +473,8 @@ while(1){
 		username = get_status(tgid,"Uid:");
 		nice = get_nice(tgid);
 		memory = get_memory(tgid);
-		//path = get_path(tgid);
-    //get path here
-    //get memory here
+		path = get_path(tgid);
+
 		printf("pid: %ld\t\tuser:%s\t\tmem:%ld\t\tnice:%d\n",tgid,username,memory/1000,nice);
 		int breaker = 0;
 
@@ -549,26 +549,71 @@ while(1){
           }
     		}
 
-			 /*Code that checks for matches of type <path>
-    		if( strcmp(iterator->type,"user") == 0 && strcmp(iterator->param,username) == 0){
+			 /*Code that checks for matches of type <path> if the path was NULL or unreadable, we skip this check*/
+    		if( path != NULL &&strcmp(iterator->type,"path") == 0 && strcmp(iterator->param,path) == 0){
           if( strcmp(iterator->action,"kill") == 0){
             printf("Preform action %s:\n", iterator->action);
-    				//wait a little maybe
-    				//check if killed and print confirmation status
-    				//break out of rule checking and move on to next process
-    				breaker = 1;
-  				}else if(strcmp(iterator->action,"suspend") == 0){
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: killing process PID = %ld due to path of process being %s\n",tgid,path);
+	    kill(tgid, SIGKILL);
+            //wait a little maybe
+	    usleep(10000);
+            //check if killed and print confirmation status
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
+	    if(!doesFileExistProc(tgid)){
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
+	    }else{
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt:process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
+	    }
+            //break out of rule checking and move on to next process
+            breaker = 1;
+          }else if(strcmp(iterator->action,"suspend") == 0){
             //preform suspend
-    				//wait a little
-    				//check suspension and print confirmation status
-    				//do not break
-  				}else if(strcmp(iterator->action,"nice") == 0){
+            printf("Preform action %s:\n", iterator->action);
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: SUSPENDING process PID = %ld due to path of process being %s\n",tgid,path);
+	    kill(tgid, SIGSTOP);
+            //wait a little
+	    usleep(10000);
+            //check suspension and print confirmation status
+	    char* t_s = get_status(tgid,"State:");
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld should be SUSPENDED, verifying now\n",tgid);
+	    if(t_s[0] == 'T'){
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld has been successfully SUSPENDED\n",tgid);
+	    free(t_s);
+	    }else{
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld did not SUSPEND\n",tgid);
+	    free(t_s);
+	    }
+            //do not break
+          }else if(strcmp(iterator->action,"nice") == 0){
             //preform nice
-    				//wait a little
-    				//check nice and print confirmation
-    				//do not break
-  				}
-    		}*/
+            printf("Preform action %s:\n", iterator->action);
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: INCREASING PRIORITY of process PID = %ld due to path of process being %s\n",tgid,path);
+	    int which = PRIO_PROCESS;
+	    int ret = setpriority(which, tgid, -20);
+            //wait a little
+	    usleep(10000);
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld should have priority of -20, verifying now\n",tgid);
+            //check nice and print confirmation
+	    if(get_nice(tgid) == -20){
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld priority increase SUCCESSFUL\n",tgid);
+	    }else{
+	    printDateLog();
+	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld priority increase UNSUCCESSFUL\n",tgid); 
+	    }	
+            //do not break
+          }
+    		}
 
 			 /*Code that checks for matches of type <memory>*/
     		if( strcmp(iterator->type,"memory") == 0){
@@ -644,7 +689,7 @@ while(1){
     		}
 		}
 		
-
+			//Go to the next rule
 			iterator = iterator->next;
 
   		}
@@ -654,14 +699,14 @@ while(1){
 		//printf("State %s and user %s:\n", state, username);
 		free(state);
 		free(username);
-		//free(path);
+		if(path != NULL)		
+		free(path);
 	}
-sleep(3);
+sleep(2);
 }
-//Sample infinite loop
-	while(1);
 
-//If we get here lets close our files
+
+//If we get here lets close our files and list, we never should though (in theory)
 	if(conf != NULL){
 	printf("Closing conf file!\n");
 	fclose(conf);
@@ -671,6 +716,8 @@ sleep(3);
 	printf("Closing log!\n");
 	fclose(logfp);
 	}
+
+	freeList();
 
 	return 0;
 }
