@@ -28,6 +28,23 @@ int pid;
 //Used as a flag to help us decide when we should add the first entry to our rule list
 int rule_start = 1;
 
+char month[12][4];
+
+void setMonths(){
+strcpy(month[0], "Jan");
+strcpy(month[1], "Feb");
+strcpy(month[2], "Mar");
+strcpy(month[3], "Apr");
+strcpy(month[4], "May");
+strcpy(month[5], "Jun");
+strcpy(month[6], "Jul");
+strcpy(month[7], "Aug");
+strcpy(month[8], "Sep");
+strcpy(month[9], "Oct");
+strcpy(month[10], "Nov");
+strcpy(month[11], "Dec");
+}
+
 //Define a structure that is a linked list of our rules
 typedef struct RuleNode RuleNode;
 struct RuleNode{
@@ -97,7 +114,7 @@ void freeList() {
 void printDateLog(){
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
-	fprintf(logfp,"%d-%d-%d %d:%d:%d ", tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	fprintf(logfp,"%s %d %d:%d:%d ", month[tm.tm_mon], tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
 /* Function that verifies if a file exists used to check existance of log and conf files*/
@@ -375,6 +392,8 @@ void stop_and_exit( int signo )
 }
 
 int main( int argc, char *argv[]){
+/* set our months */
+setMonths();
 
 /* set up signal handler to deal with CTRL-C */
   signal( SIGINT, stop_and_exit );
@@ -389,7 +408,7 @@ int main( int argc, char *argv[]){
 // Build a string that will have the log message for when we start up the program
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);//Get values for our timestamp then build message
-	snprintf(start_up,100,"%d-%d-%d %d:%d:%d ubuntu phunt: phunt startup (PID=%d)\n",tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,pid);
+	snprintf(start_up,100,"%s %d %d:%d:%d ubuntu phunt: phunt startup (PID=%d)\n", month[tm.tm_mon], tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,pid);
 
 // Parse the command line and set up the pointers to the log and config files
 	parse_command_line(argc, argv, &logfp, &conf);
@@ -421,7 +440,7 @@ int main( int argc, char *argv[]){
 			listAdd(action,type,param,true);
 		    }
 		    printDateLog();
-		    fprintf(logfp,"ubuntu phunt: found and added rule < ACTION:%s\tTYPE:%s\tPARAM:%s >\n",action,type,param);
+		    fprintf(logfp,"ubuntu phunt: found and added rule < ACTION:%s TYPE:%s PARAM:%s >\n",action,type,param);
 		    //Free memory used for local placeholders of action type param
 		    free(action);
 		    free(type);
