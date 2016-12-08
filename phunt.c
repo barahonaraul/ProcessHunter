@@ -443,6 +443,7 @@ printDateLog();
 fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 //Reading the proc/ directory
 //set up the DIR
+while(1){
 	DIR* proc = opendir("/proc");
 	struct dirent* ent;
 	long tgid;
@@ -452,6 +453,7 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 		perror("opendir(/proc)");
 		return 1;
 	}
+
 /* Lets read proc and find our processes */
 	while( ent = readdir(proc)) {
 	//look if the folder being looked at is a digit (meaning its a process folder)
@@ -526,6 +528,7 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
             //do not break
           }else if(strcmp(iterator->action,"nice") == 0){
             //preform nice
+            printf("Preform action %s:\n", iterator->action);
 	    printDateLog();
 	    fprintf(logfp,"ubuntu phunt: INCREASING PRIORITY of process PID = %ld due to owner user being %s\n",tgid,username);
 	    int which = PRIO_PROCESS;
@@ -537,7 +540,7 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
             //check nice and print confirmation
 	    if(get_nice(tgid) == -20){
 	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld has been priority INCREASE SUCCESSFUL\n",tgid);
+	    fprintf(logfp,"ubuntu phunt: process PID = %ld priority increase SUCCESSFUL\n",tgid);
 	    }else{
 	    printDateLog();
 	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld priority increase UNSUCCESSFUL\n",tgid); 
@@ -599,6 +602,8 @@ fprintf(logfp,"ubuntu phunt: finished parsing the config file!\n");
 		free(username);
 		//free(path);
 	}
+sleep(3);
+}
 //Sample infinite loop
 	while(1);
 
