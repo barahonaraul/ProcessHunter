@@ -15,14 +15,20 @@
 
 FILE *logfp = NULL;
 FILE *conf = NULL;
+//Default Log and Config File Paths
 char d_conf_path[] = "/etc/phunt.conf";
 char d_log_path[] = "/var/log/phunt.log";
+//Custom Log and Config File Directories
 char d_conf_dir[] = "/etc/";
 char d_log_dir[] = "/var/log/";
+//Used to store startup information for printing once we got the log file
 char start_up[150];
+//Used to get the pid of phunt!
 int pid;
+//Used as a flag to help us decide when we should add the first entry to our rule list
 int rule_start = 1;
 
+//Define a structure that is a linked list of our rules
 typedef struct RuleNode RuleNode;
 
 struct RuleNode{
@@ -550,7 +556,7 @@ while(1){
     		}
 
 			 /*Code that checks for matches of type <path> if the path was NULL or unreadable, we skip this check*/
-    		if( path != NULL &&strcmp(iterator->type,"path") == 0 && strcmp(iterator->param,path) == 0){
+    		if( path != NULL &&strcmp(iterator->type,"path") == 0 && strncmp(iterator->param,path,strlen(iterator->param)) == 0){
           if( strcmp(iterator->action,"kill") == 0){
             printf("Preform action %s:\n", iterator->action);
 	    printDateLog();
