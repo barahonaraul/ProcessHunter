@@ -356,6 +356,10 @@ int is_empty(const char *s) {
  */
 void stop_and_exit( int signo )
 {
+
+   printDateLog();
+   fprintf(logfp,"ubuntu phunt: SCANNING HAS BEEN STOPPED.... PHUNT EXITING...... GOODBYE!\n");
+
   //Close our log file
   if( logfp != NULL ) {
     fclose( logfp );
@@ -446,7 +450,7 @@ while(1){
 	}
   //Lets log when we start up a scan of the proc files
   printDateLog();
-  fprintf(logfp, "ubuntu phunt: start a scan of system proc files!\n");
+  fprintf(logfp, "ubuntu phunt: <<<<<<< STARTING A SCAN OF SYSTEM PROC FILES! >>>>>>>\n");
 
 /* Lets read proc and find our processes */
 	while( ent = readdir(proc)) {
@@ -461,6 +465,9 @@ while(1){
     int nice; //value that holds nice value
 		//If we didn't continue, then convert the name of the folder into a long which holds the pid
 		tgid = strtol(ent->d_name, NULL, 10); //tgid is our pid of the process being scanned
+		//Print to log Scanning process (PID = tgid)
+    printDateLog();
+    fprintf(logfp, "ubuntu phunt: scanning process with PID = %ld\n",tgid );
 		//Get the values for the process status, username, memory, and path
 		state = get_status(tgid,"State:");
 		username = get_status(tgid,"Uid:");
@@ -471,9 +478,6 @@ while(1){
 		printf("pid: %ld\t\tuser:%s\t\tmem:%ld\t\tnice:%d\n",tgid,username,memory/1000,nice);
 		int breaker = 0;
 
-		//Print to log Scanning process (PID = pid)
-    printDateLog();
-    fprintf(logfp, "ubuntu phunt: scanning process with PID = %ld\n",tgid );
 		/* Check all rules on this process here */
 		while(iterator != NULL && breaker == 0) {
 			  /* Code that checks for matches of type <user> */
@@ -488,13 +492,13 @@ while(1){
 	          usleep(10000);
             //check if killed and print confirmation status
 	          printDateLog();
-	          fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
+	          fprintf(logfp,"ubuntu phunt: process PID = %ld should be terminated, verifying now\n",tgid);
 	          if(!doesFileExistProc(tgid)){
 	             printDateLog();
-	             fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
+	             fprintf(logfp,"ubuntu phunt: process PID = %ld has been successfully terminated\n",tgid);
 	          }else{
 	             printDateLog();
-	             fprintf(logfp,"ubuntu phunt:process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
+	             fprintf(logfp,"ubuntu phunt: process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
 	          }
             //break out of rule checking and move on to next process
             breaker = 1;
@@ -555,13 +559,13 @@ while(1){
 	          usleep(10000);
             //check if killed and print confirmation status
 	          printDateLog();
-	          fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
+	          fprintf(logfp,"ubuntu phunt: process PID = %ld should be terminated, verifying now\n",tgid);
 	          if(!doesFileExistProc(tgid)){
 	             printDateLog();
-	             fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
+	             fprintf(logfp,"ubuntu phunt: process PID = %ld has been successfully terminated\n",tgid);
 	          }else{
 	             printDateLog();
-	             fprintf(logfp,"ubuntu phunt:process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
+	             fprintf(logfp,"ubuntu phunt: process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
 	          }
             //break out of rule checking and move on to next process
             breaker = 1;
@@ -628,13 +632,13 @@ while(1){
 	                usleep(10000);
                   //check if killed and print confirmation status
 	                printDateLog();
-	                fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
+	                fprintf(logfp,"ubuntu phunt: process PID = %ld should be terminated, verifying now\n",tgid);
 	                if(!doesFileExistProc(tgid)){
 	                   printDateLog();
-	                   fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
+	                   fprintf(logfp,"ubuntu phunt: process PID = %ld has been successfully terminated\n",tgid);
 	                }else{
 	                   printDateLog();
-	                  fprintf(logfp,"ubuntu phunt:process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
+	                  fprintf(logfp,"ubuntu phunt: process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
 	                }
                   //break out of rule checking and move on to next process
                   breaker = 1;
@@ -700,7 +704,7 @@ while(1){
 	}
 //Wait 2 seconds before rescanning the system, print a message to the log file
 printDateLog();
-fprintf(logfp, "ubuntu phunt: finished scanning system proc files! Waiting to start new scan.....\n", );
+fprintf(logfp, "ubuntu phunt: <<<<<<< FINISHED SCANNING SYSTEM PROC FILES! WAITING TO START NEW SCAN >>>>>>>\n");
 sleep(2);
 }
 
