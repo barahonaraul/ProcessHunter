@@ -30,14 +30,11 @@ int rule_start = 1;
 
 //Define a structure that is a linked list of our rules
 typedef struct RuleNode RuleNode;
-
 struct RuleNode{
-
     char * action;
     char * type;
     char * param;
     struct RuleNode *next;
-
 };
 
 RuleNode *head = NULL;//Keep track of our head
@@ -46,7 +43,6 @@ RuleNode *curr = NULL;//Keep track of our last non null element
 RuleNode* listAdd(char* action, char* type, char* param, bool addToEnd) {
 //    printf("allocate memory for node\n");
     RuleNode *ptr = malloc(sizeof(RuleNode));
-
 // Get copy the given action, type, and param for the rule into our pointer, set next to null
     //printf("Copy the current action: %s\n",action);
     ptr->action = strdup(action);
@@ -55,25 +51,21 @@ RuleNode* listAdd(char* action, char* type, char* param, bool addToEnd) {
     //printf("Copy the current param: %s\n",param);
     ptr->param = strdup(param);
     ptr->next = NULL;
-
-    if (addToEnd)//depending on given input, add to end or head of list
-    {
-	//printf("curr next is now pointer!\n");
+    if (addToEnd){//depending on given input, add to end or head of list
+	      //printf("curr next is now pointer!\n");
         curr->next = ptr;
-	//printf("curr is now ptr!\n");
+	      //printf("curr is now ptr!\n");
         curr = ptr;
     }
-    else//add as head if false
-    {
-	//printf("head time!\n");
-	//This should only happen once. Here we add the first element, and set current = head
-        ptr->next = head;
-	//printf("head is now ptr!\n");
-        head = ptr;
-	//printf("curr is now head!\n");
-	curr = head;
+    else{//add as head if false
+	     //printf("head time!\n");
+	     //This should only happen once. Here we add the first element, and set current = head
+       ptr->next = head;
+	     //printf("head is now ptr!\n");
+       head = ptr;
+	     //printf("curr is now head!\n");
+	     curr = head;
     }
-
     return ptr;
 }
 
@@ -172,37 +164,25 @@ char * get_status(long tgid, char * stat_wanted) {
 
 /* Function used mainly to get the username or status (running, sleeping etc.) of a process */
 int get_nice(long tgid) {
-    
     char filename[100];
     sprintf(filename, "/proc/%ld/stat", tgid);
     FILE *f = fopen(filename, "r");
-
-    int nice;
+    int nice;//We skip many entries in this file as nice is entry 19
     fscanf(f, "%*d %*s %*c %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %d ",&nice);
     //printf("nice of pid %ld is = %d\n", tgid,nice);
-
-    
     fclose(f);
-
     return nice;
-
 }
 
 long get_memory(long tgid) {
-    
     char filename[100];
     sprintf(filename, "/proc/%ld/statm", tgid);
     FILE *f = fopen(filename, "r");
-
-    long memory;
+    long memory;//memory is first entry in this file, easy grab!
     fscanf(f, "%ld",&memory);
     //printf("memory of pid %ld is = %ld\n", tgid, memory);
-
-    
     fclose(f);
-
     return memory;
-
 }
 
 /* get the path of a process given it's id, if we are unable to read it, then return null and print an error message*/
@@ -212,20 +192,24 @@ char * get_path(long tgid) {
     sprintf(path, "/proc/%ld/exe", tgid);
     char buf[PATH_MAX];
     int amount_read;
-//printf("path being readlink from: %s\n",path);
+    //printf("path being readlink from: %s\n",path);
     amount_read = readlink(path,buf,sizeof(buf)-1);
     if( amount_read != -1 ){
-	buf[amount_read] = '\0';
-printf("THIS IS IN tHE BUFFER: %s\n",buf);
-	result = malloc( amount_read + 1);
-        strcpy(result,buf);
+	     buf[amount_read] = '\0';
+       printf("THIS IS IN tHE BUFFER: %s\n",buf);
+	     result = malloc( amount_read + 1);
+       strcpy(result,buf);
     }else{
-	fprintf(stderr,"Unable to read path for pid: %ld : ",tgid);
-	perror("");	
-	result = NULL;
+       //This gets printed to our cmd line, lets us know there was an issue with getting the path
+	     fprintf(stderr,"Unable to read path for pid: %ld : ",tgid);
+	     perror("");
+       //Also print a message to our log file so we know we won't have path checkin functionality
+       printDateLog();
+       fprintf(logfp, "ubuntu phunt: ERROR could not resolve path for PID = %ld, PATH RULES WILL NOT BE CHECKED FOR THIS PROCESS!\n",tgid );
+	     result = NULL;
     }
-	
-    printf("path for pid:%ld is : %s\n",tgid,result); 
+    //Lets print the path to the command prompt!
+    printf("path for pid:%ld is : %s\n",tgid,result);
     return result;
 }
 
@@ -382,7 +366,7 @@ void stop_and_exit( int signo )
   }
   //free our rules list memory
  freeList();
-//exit gracefully!
+//exit gracefully! YAY
  exit(0);
 }
 
@@ -397,7 +381,7 @@ int main( int argc, char *argv[]){
 		perror("Unable to get pid!");
 		exit(1);
 	}
-printf("pid %d\n",pid);
+//printf("pid %d\n",pid);//Printed pid of phunt for debugging purposes
 // Build a string that will have the log message for when we start up the program
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);//Get values for our timestamp then build message
@@ -460,6 +444,9 @@ while(1){
 		perror("opendir(/proc)");
 		return 1;
 	}
+  //Lets log when we start up a scan of the proc files
+  printDateLog();
+  fprintf(logfp, "ubuntu phunt: start a scan of system proc files!\n");
 
 /* Lets read proc and find our processes */
 	while( ent = readdir(proc)) {
@@ -474,13 +461,13 @@ while(1){
     int nice; //value that holds nice value
 		//If we didn't continue, then convert the name of the folder into a long which holds the pid
 		tgid = strtol(ent->d_name, NULL, 10); //tgid is our pid of the process being scanned
-		//Get the values for the process status, username, path, and memory
+		//Get the values for the process status, username, memory, and path
 		state = get_status(tgid,"State:");
 		username = get_status(tgid,"Uid:");
 		nice = get_nice(tgid);
 		memory = get_memory(tgid);
-		path = get_path(tgid);
-
+		path = get_path(tgid);//this inner function prints the path to our console! and any errors!
+    //Lets print out the current pid, its owners username, its memory, and its nice value to the console
 		printf("pid: %ld\t\tuser:%s\t\tmem:%ld\t\tnice:%d\n",tgid,username,memory/1000,nice);
 		int breaker = 0;
 
@@ -492,65 +479,66 @@ while(1){
 			  /* Code that checks for matches of type <user> */
     		if( strcmp(iterator->type,"user") == 0 && strcmp(iterator->param,username) == 0){
           if( strcmp(iterator->action,"kill") == 0){
-            printf("Preform action %s:\n", iterator->action);
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: killing process PID = %ld due to owner user being %s\n",tgid,username);
-	    kill(tgid, SIGKILL);
+            //perform the kill
+            printf("Preform action:%s on pid:%ld\n", iterator->action,tgid);
+	          printDateLog();
+	          fprintf(logfp,"ubuntu phunt: killing process PID = %ld due to owner user being %s\n",tgid,username);
+	          kill(tgid, SIGKILL);
             //wait a little maybe
-	    usleep(10000);
+	          usleep(10000);
             //check if killed and print confirmation status
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
-	    if(!doesFileExistProc(tgid)){
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
-	    }else{
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
-	    }
+	          printDateLog();
+	          fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
+	          if(!doesFileExistProc(tgid)){
+	             printDateLog();
+	             fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
+	          }else{
+	             printDateLog();
+	             fprintf(logfp,"ubuntu phunt:process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
+	          }
             //break out of rule checking and move on to next process
             breaker = 1;
           }else if(strcmp(iterator->action,"suspend") == 0){
             //preform suspend
             printf("Preform action %s:\n", iterator->action);
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: SUSPENDING process PID = %ld due to owner user being %s\n",tgid,username);
-	    kill(tgid, SIGSTOP);
+	          printDateLog();
+	          fprintf(logfp,"ubuntu phunt: SUSPENDING process PID = %ld due to owner user being %s\n",tgid,username);
+	          kill(tgid, SIGSTOP);
             //wait a little
-	    usleep(10000);
+	          usleep(10000);
             //check suspension and print confirmation status
-	    char* t_s = get_status(tgid,"State:");
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld should be SUSPENDED, verifying now\n",tgid);
-	    if(t_s[0] == 'T'){
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld has been successfully SUSPENDED\n",tgid);
-	    free(t_s);
-	    }else{
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld did not SUSPEND\n",tgid);
-	    free(t_s);
-	    }
+	          char* t_s = get_status(tgid,"State:");
+	          printDateLog();
+	          fprintf(logfp,"ubuntu phunt: process PID = %ld should be SUSPENDED, verifying now\n",tgid);
+	          if(t_s[0] == 'T'){//Check that status is T for stopped
+	             printDateLog();
+	             fprintf(logfp,"ubuntu phunt: process PID = %ld has been successfully SUSPENDED\n",tgid);
+	             free(t_s);
+	          }else{
+	             printDateLog();
+	             fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld did not SUSPEND\n",tgid);
+	             free(t_s);
+	          }
             //do not break
           }else if(strcmp(iterator->action,"nice") == 0){
             //preform nice
             printf("Preform action %s:\n", iterator->action);
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: INCREASING PRIORITY of process PID = %ld due to owner user being %s\n",tgid,username);
-	    int which = PRIO_PROCESS;
-	    int ret = setpriority(which, tgid, -20);
+	          printDateLog();
+	          fprintf(logfp,"ubuntu phunt: INCREASING PRIORITY of process PID = %ld due to owner user being %s\n",tgid,username);
+	          int which = PRIO_PROCESS;
+	          int ret = setpriority(which, tgid, -20);
             //wait a little
-	    usleep(10000);
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld should have priority of -20, verifying now\n",tgid);
+	          usleep(10000);
+	          printDateLog();
+	          fprintf(logfp,"ubuntu phunt: process PID = %ld should have priority of -20, verifying now\n",tgid);
             //check nice and print confirmation
-	    if(get_nice(tgid) == -20){
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld priority increase SUCCESSFUL\n",tgid);
-	    }else{
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld priority increase UNSUCCESSFUL\n",tgid); 
-	    }	
+	          if(get_nice(tgid) == -20){
+	             printDateLog();
+	             fprintf(logfp,"ubuntu phunt: process PID = %ld priority increase SUCCESSFUL\n",tgid);
+	          }else{
+	             printDateLog();
+	             fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld priority increase UNSUCCESSFUL\n",tgid);
+	          }
             //do not break
           }
     		}
@@ -558,65 +546,66 @@ while(1){
 			 /*Code that checks for matches of type <path> if the path was NULL or unreadable, we skip this check*/
     		if( path != NULL &&strcmp(iterator->type,"path") == 0 && strncmp(iterator->param,path,strlen(iterator->param)) == 0){
           if( strcmp(iterator->action,"kill") == 0){
+            //perform the kill
             printf("Preform action %s:\n", iterator->action);
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: killing process PID = %ld due to path of process being %s\n",tgid,path);
-	    kill(tgid, SIGKILL);
+	          printDateLog();
+	          fprintf(logfp,"ubuntu phunt: killing process PID = %ld due to path of process being %s\n",tgid,path);
+	          kill(tgid, SIGKILL);
             //wait a little maybe
-	    usleep(10000);
+	          usleep(10000);
             //check if killed and print confirmation status
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
-	    if(!doesFileExistProc(tgid)){
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
-	    }else{
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
-	    }
+	          printDateLog();
+	          fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
+	          if(!doesFileExistProc(tgid)){
+	             printDateLog();
+	             fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
+	          }else{
+	             printDateLog();
+	             fprintf(logfp,"ubuntu phunt:process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
+	          }
             //break out of rule checking and move on to next process
             breaker = 1;
           }else if(strcmp(iterator->action,"suspend") == 0){
             //preform suspend
             printf("Preform action %s:\n", iterator->action);
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: SUSPENDING process PID = %ld due to path of process being %s\n",tgid,path);
-	    kill(tgid, SIGSTOP);
+	          printDateLog();
+	          fprintf(logfp,"ubuntu phunt: SUSPENDING process PID = %ld due to path of process being %s\n",tgid,path);
+	          kill(tgid, SIGSTOP);
             //wait a little
-	    usleep(10000);
+	          usleep(10000);
             //check suspension and print confirmation status
-	    char* t_s = get_status(tgid,"State:");
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld should be SUSPENDED, verifying now\n",tgid);
-	    if(t_s[0] == 'T'){
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld has been successfully SUSPENDED\n",tgid);
-	    free(t_s);
-	    }else{
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld did not SUSPEND\n",tgid);
-	    free(t_s);
-	    }
+	          char* t_s = get_status(tgid,"State:");
+	          printDateLog();
+	          fprintf(logfp,"ubuntu phunt: process PID = %ld should be SUSPENDED, verifying now\n",tgid);
+	          if(t_s[0] == 'T'){
+	             printDateLog();
+	             fprintf(logfp,"ubuntu phunt: process PID = %ld has been successfully SUSPENDED\n",tgid);
+	             free(t_s);
+	          }else{
+	             printDateLog();
+	             fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld did not SUSPEND\n",tgid);
+	             free(t_s);
+	          }
             //do not break
           }else if(strcmp(iterator->action,"nice") == 0){
             //preform nice
             printf("Preform action %s:\n", iterator->action);
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: INCREASING PRIORITY of process PID = %ld due to path of process being %s\n",tgid,path);
-	    int which = PRIO_PROCESS;
-	    int ret = setpriority(which, tgid, -20);
+	          printDateLog();
+	          fprintf(logfp,"ubuntu phunt: INCREASING PRIORITY of process PID = %ld due to path of process being %s\n",tgid,path);
+	          int which = PRIO_PROCESS;
+	          int ret = setpriority(which, tgid, -20);
             //wait a little
-	    usleep(10000);
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld should have priority of -20, verifying now\n",tgid);
+	          usleep(10000);
+	          printDateLog();
+	          fprintf(logfp,"ubuntu phunt: process PID = %ld should have priority of -20, verifying now\n",tgid);
             //check nice and print confirmation
-	    if(get_nice(tgid) == -20){
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld priority increase SUCCESSFUL\n",tgid);
-	    }else{
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld priority increase UNSUCCESSFUL\n",tgid); 
-	    }	
+	          if(get_nice(tgid) == -20){
+	             printDateLog();
+	             fprintf(logfp,"ubuntu phunt: process PID = %ld priority increase SUCCESSFUL\n",tgid);
+	          }else{
+	             printDateLog();
+	             fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld priority increase UNSUCCESSFUL\n",tgid);
+	          }
             //do not break
           }
     		}
@@ -624,78 +613,78 @@ while(1){
 			 /*Code that checks for matches of type <memory>*/
     		if( strcmp(iterator->type,"memory") == 0){
           	int limit = atoi(iterator->param);
-		//printf("LIMIT IS : %d CURRENT MEM IS:%d\n",limit,(int)(get_memory(tgid)/1000));
-		//First check that process is over memory ceiling, we are given memory in KB so divde by 1000 to get MB		
-		if( (int)(get_memory(tgid)/1000) >= limit){
-			printf(" pid: %ld over limit!\n",tgid);
-			printDateLog();
-			fprintf(logfp,"ubuntu phunt: process PID = %ld over memory ceiling of %s MB !\n",tgid,iterator->param);
-          if( strcmp(iterator->action,"kill") == 0){
-            printf("Preform action %s:\n", iterator->action);
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: killing process PID = %ld due to being over memory limit!\n",tgid);
-	    kill(tgid, SIGKILL);
-            //wait a little maybe
-	    usleep(10000);
-            //check if killed and print confirmation status
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
-	    if(!doesFileExistProc(tgid)){
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
-	    }else{
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt:process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
-	    }
-            //break out of rule checking and move on to next process
-            breaker = 1;
-          }else if(strcmp(iterator->action,"suspend") == 0){
-            //preform suspend
-            printf("Preform action %s:\n", iterator->action);
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: SUSPENDING process PID = %ld due to being over memory limit %s\n",tgid,username);
-	    kill(tgid, SIGSTOP);
-            //wait a little
-	    usleep(10000);
-            //check suspension and print confirmation status
-	    char* t_s = get_status(tgid,"State:");
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld should be SUSPENDED, verifying now\n",tgid);
-	    if(t_s[0] == 'T'){
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld has been successfully SUSPENDED\n",tgid);
-	    free(t_s);
-	    }else{
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld did not SUSPEND\n",tgid);
-	    free(t_s);
-	    }
-            //do not break
-          }else if(strcmp(iterator->action,"nice") == 0){
-            //preform nice
-            printf("Preform action %s:\n", iterator->action);
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: INCREASING PRIORITY of process PID = %ld due to being over memory ceiling %s\n",tgid,username);
-	    int which = PRIO_PROCESS;
-	    int ret = setpriority(which, tgid, -20);
-            //wait a little
-	    usleep(10000);
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld should have priority of -20, verifying now\n",tgid);
-            //check nice and print confirmation
-	    if(get_nice(tgid) == -20){
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: process PID = %ld priority increase SUCCESSFUL\n",tgid);
-	    }else{
-	    printDateLog();
-	    fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld priority increase UNSUCCESSFUL\n",tgid); 
-	    }	
-            //do not break
+		        //printf("LIMIT IS : %d CURRENT MEM IS:%d\n",limit,(int)(get_memory(tgid)/1000));
+		        //First check that process is over memory ceiling, we are given memory in KB so divde by 1000 to get MB
+		        if( (int)(get_memory(tgid)/1000) >= limit){
+			          printf(" pid: %ld over limit!\n",tgid);
+			          printDateLog();
+			          fprintf(logfp,"ubuntu phunt: process PID = %ld over memory ceiling of %s MB !\n",tgid,iterator->param);
+                if( strcmp(iterator->action,"kill") == 0){
+                  printf("Preform action %s:\n", iterator->action);
+	                printDateLog();
+	                fprintf(logfp,"ubuntu phunt: killing process PID = %ld due to being over memory limit!\n",tgid);
+	                kill(tgid, SIGKILL);
+                  //wait a little maybe
+	                usleep(10000);
+                  //check if killed and print confirmation status
+	                printDateLog();
+	                fprintf(logfp,"ubuntu phunt:process PID = %ld should be terminated, verifying now\n",tgid);
+	                if(!doesFileExistProc(tgid)){
+	                   printDateLog();
+	                   fprintf(logfp,"ubuntu phunt:process PID = %ld has been successfully terminated\n",tgid);
+	                }else{
+	                   printDateLog();
+	                  fprintf(logfp,"ubuntu phunt:process PID = %ld MAY have terminated or another process has appeared with same PID\n",tgid);
+	                }
+                  //break out of rule checking and move on to next process
+                  breaker = 1;
+              }else if(strcmp(iterator->action,"suspend") == 0){
+                //preform suspend
+                printf("Preform action %s:\n", iterator->action);
+  	            printDateLog();
+  	            fprintf(logfp,"ubuntu phunt: SUSPENDING process PID = %ld due to being over memory limit %s\n",tgid,username);
+  	            kill(tgid, SIGSTOP);
+                //wait a little
+  	            usleep(10000);
+                //check suspension and print confirmation status
+  	            char* t_s = get_status(tgid,"State:");
+  	            printDateLog();
+  	            fprintf(logfp,"ubuntu phunt: process PID = %ld should be SUSPENDED, verifying now\n",tgid);
+  	            if(t_s[0] == 'T'){
+  	               printDateLog();
+  	               fprintf(logfp,"ubuntu phunt: process PID = %ld has been successfully SUSPENDED\n",tgid);
+  	               free(t_s);
+  	            }else{
+  	               printDateLog();
+  	               fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld did not SUSPEND\n",tgid);
+  	               free(t_s);
+  	            }
+                //do not break
+              }else if(strcmp(iterator->action,"nice") == 0){
+                //preform nice
+                printf("Preform action %s:\n", iterator->action);
+	              printDateLog();
+	              fprintf(logfp,"ubuntu phunt: INCREASING PRIORITY of process PID = %ld due to being over memory ceiling %s\n",tgid,username);
+	              int which = PRIO_PROCESS;
+	              int ret = setpriority(which, tgid, -20);
+                //wait a little
+	              usleep(10000);
+	              printDateLog();
+	              fprintf(logfp,"ubuntu phunt: process PID = %ld should have priority of -20, verifying now\n",tgid);
+                //check nice and print confirmation
+	              if(get_nice(tgid) == -20){
+	                 printDateLog();
+	                 fprintf(logfp,"ubuntu phunt: process PID = %ld priority increase SUCCESSFUL\n",tgid);
+	              }else{
+	                 printDateLog();
+	                fprintf(logfp,"ubuntu phunt: WARNING process PID = %ld priority increase UNSUCCESSFUL\n",tgid);
+	              }
+                //do not break
+              }
           }
-    		}
-		}
-		
-			//Go to the next rule
+		    }
+
+			//Go to the next rule (if breaker was set to 1 then this never happens)
 			iterator = iterator->next;
 
   		}
@@ -703,11 +692,15 @@ while(1){
     printDateLog();
     fprintf(logfp, "ubuntu phunt: completed scanning for process PID = %ld\n",tgid);
 		//printf("State %s and user %s:\n", state, username);
+    //Lets free our used variables! This is important!
 		free(state);
 		free(username);
-		if(path != NULL)		
+		if(path != NULL)//Only free path variable if it was not NULL!
 		free(path);
 	}
+//Wait 2 seconds before rescanning the system, print a message to the log file
+printDateLog();
+fprintf(logfp, "ubuntu phunt: finished scanning system proc files! Waiting to start new scan.....\n", );
 sleep(2);
 }
 
