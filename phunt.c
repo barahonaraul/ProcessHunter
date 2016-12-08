@@ -470,12 +470,12 @@ while(1){
 		//Get the values for the process status, username, path, and memory
 		state = get_status(tgid,"State:");
 		username = get_status(tgid,"Uid:");
-		get_nice(tgid);
+		nice = get_nice(tgid);
 		memory = get_memory(tgid);
 		//path = get_path(tgid);
     //get path here
     //get memory here
-		printf("pid: %ld\t\tuser:%s\t\tmem:%ld\t\tnice:%d\n",tgid,username,memory,nice);
+		printf("pid: %ld\t\tuser:%s\t\tmem:%ld\t\tnice:%d\n",tgid,username,memory/1000,nice);
 		int breaker = 0;
 
 		//Print to log Scanning process (PID = pid)
@@ -570,26 +570,32 @@ while(1){
   				}
     		}*/
 
-			 /*Code that checks for matches of type <memory>
-    		if( strcmp(iterator->type,"memory") == 0 && strcmp(iterator->param,username) == 0){
-          if( strcmp(iterator->action,"kill") == 0){
-            printf("Preform action %s:\n", iterator->action);
-            //wait a little maybe
+			 /*Code that checks for matches of type <memory>*/
+    		if( strcmp(iterator->type,"memory") == 0 && tgid == 4694){// && strcmp(username,"ral") == 0){
+          	int limit = atoi(iterator->param);
+		printf("LIMIT IS : %d CURRENT MEM IS:%d\n",limit,(int)(get_memory(tgid)/1000));
+		if( (int)(get_memory(tgid)/1000) >= limit){
+			printf(" pid: %ld over limit!\n",tgid);
+			/*if( strcmp(iterator->action,"kill") == 0){
+            			printf("Preform action %s:\n", iterator->action);
+            			//wait a little maybe
     				//check if killed and print confirmation status
     				//break out of rule checking and move on to next process
     				breaker = 1;
   				}else if(strcmp(iterator->action,"suspend") == 0){
-            //preform suspend
+            			//preform suspend
     				//wait a little
     				//check suspension and print confirmation status
     				//do not break
   				}else if(strcmp(iterator->action,"nice") == 0){
-            //preform nice
+            			//preform nice
     				//wait a little
     				//check nice and print confirmation
     				//do not break
-  				}
-    		}*/
+  				}*/
+    		}
+		}
+		
 
 			iterator = iterator->next;
 
